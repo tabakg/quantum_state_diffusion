@@ -14,6 +14,8 @@ import sdeint
 from scipy import sparse
 import numpy.linalg as la
 from time import time
+
+### Plotting
 import matplotlib as mil
 mil.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -27,17 +29,23 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True,
         psi0: Nx1 csr matrix, dtype = complex128
             input state.
         tspan: numpy array, dtype = float
-            Time series.
+            Time series of some length T.
         Ls: list of NxN csr matrices, dtype = complex128
             System-environment interaction terms (Lindblad terms).
         sdeint_method (Optional) SDE solver method:
             Which SDE solver to use. Default is sdeint.itoSRI2.
         obsq (optional): list of NxN csr matrices, dtype = complex128
-            Observables for which to generate trajectory information
+            Observables for which to generate trajectory information.
+            Default value is None (no observables).
         normalized (optional): Boolean
             Use the normalized quantum state diffusion equations. (TODO: case False)
         ntraj (optional): int
-            number of trajectories. (TODO)
+            number of trajectories.
+
+    Returns:
+        A dictionary with the following keys and values:
+            ['psis'] -> np.array with shape = (ntraj,T,N) and dtype = complex128
+            ['obsq_expects'] -> np.array with shape = (ntraj,T,len(obsq)) and dtype = complex128
 
     '''
 
@@ -85,13 +93,16 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True,
         raise ValueError("Case normalized == False is not implemented.")
 
     psi0_arr = np.asarray(psi0.todense()).T[0]
-    psis = sdeint_method(f,G,psi0_arr,tspan)
 
-    ## maybe there is a more efficient way to do this...
-    obsq_expects = [ np.asarray([ob.dot(psi).dot(psi.conj()) for psi in psis])
-                        for ob in obsq ]
+    psis = np.asarray([ sdeint_method(f,G,psi0_arr,tspan) for _ in range(ntraj)])
 
-    return psis, obsq_expects
+    ## maybe there is a more efficient way to do this, but for now it's OK
+    obsq_expects = (np.asarray([[ np.asarray([ob.dot(psi).dot(psi.conj())
+                        for psi in psis[i]])
+                            for ob in obsq ] for i in range(ntraj)])
+                                if not obsq is None else None)
+
+    return {"psis":psis, "obsq_expects":obsq_expects}
 
 if __name__ == "__main__":
 
@@ -101,12 +112,19 @@ if __name__ == "__main__":
     tspan = np.linspace(0,0.5,5000)
     obsq = [sparse.csr_matrix(np.diag([i for i in range(4)]*2),dtype=np.complex128)]
 
+    ntraj = 5
+
     T_init = time()
-    psis,obsq_expects = qsd_solve(H, psi0, tspan, Ls, sdeint.itoSRI2, obsq = obsq)
+    D = qsd_solve(H, psi0, tspan, Ls, sdeint.itoSRI2, obsq = obsq, ntraj = ntraj)
     T_fin = time()
 
+    psis = D["psis"]
+    obsq_expects = D["obsq_expects"]
+
     print ("time to run:  ", T_fin - T_init, " seconds.")
-    print ("Last point: ",psis[-1])
-    print ("Norm of last point: ",la.norm(psis[-1]))  ## should be close to 1...
-    plt.plot(tspan,obsq_expects[0])
+    print ("Last point of traj 0: ",psis[0][-1])
+    print ("Norm of last point in traj 0: ",la.norm(psis[0][-1]))  ## should be close to 1...
+
+    for i in range(ntraj):
+        plt.plot(tspan,obsq_expects[i][0])
     plt.show()
