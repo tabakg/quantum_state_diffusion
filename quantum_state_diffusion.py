@@ -15,13 +15,14 @@ from scipy import sparse
 import numpy.linalg as la
 from time import time
 
+from multiprocess import Pool
+
 ### Plotting
 import matplotlib as mil
 mil.use('TkAgg')
 import matplotlib.pyplot as plt
 
-
-def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True, ntraj=1,):
+def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True, ntraj=1, processes = 8, seed = 1):
     '''
     Args:
         H: NxN csr matrix, dtype = complex128
@@ -41,6 +42,8 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True,
             Use the normalized quantum state diffusion equations. (TODO: case False)
         ntraj (optional): int
             number of trajectories.
+        processes (optional): int
+            number of processes. If processes == 1, don't use multiprocessing.
 
     Returns:
         A dictionary with the following keys and values:
@@ -84,18 +87,39 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True,
             update_Lpsis_and_ls(psi,t)
             return (-1j * H.dot(psi)
                     - sum([ 0.5*(L.H.dot(Lpsi) + np.conj(l)*l*psi)
-                              - np.conj(l)*(Lpsi) for L,l,Lpsi in zip(Ls,ls,Lpsis)]) )
+                    - np.conj(l)*(Lpsi) for L,l,Lpsi in zip(Ls,ls,Lpsis)]) )
         def G(psi,t):
             update_Lpsis_and_ls(psi,t)
-            complex_noise = np.vstack([Lpsi - l*psi for Lpsi,l in zip(Lpsis,ls)]) / np.sqrt(2.)
+            complex_noise = np.vstack([Lpsi - l*psi
+                            for Lpsi,l in zip(Lpsis,ls)]) / np.sqrt(2.)
             return np.vstack([complex_noise.real, 1j*complex_noise.imag]).T
     else:
         raise ValueError("Case normalized == False is not implemented.")
 
     psi0_arr = np.asarray(psi0.todense()).T[0]
 
-    psis = np.asarray([ sdeint_method(f,G,psi0_arr,tspan) for _ in range(ntraj)])
+    # '''single processing'''
+    # psis = np.asarray([ sdeint_method(f,G,psi0_arr,tspan) for _ in range(ntraj)])
 
+    '''multiprocessing'''
+    def SDE_helper(args,s):
+        '''Let's make different wiener increments for each trajectory'''
+        m = 2 * len(Ls)
+        N = len(tspan)-1
+        h = (tspan[N-1] - tspan[0])/(N - 1)
+        np.random.seed(s)
+        dW = np.random.normal(0.0, np.sqrt(h), (N, m))
+        return sdeint_method(*args,dW=dW)
+
+    pool = Pool(processes=processes,)
+    params = [[f,G,psi0_arr,tspan]] * ntraj
+    if not seed is None:
+        np.random.seed(seed)
+    seeds = [np.random.randint(1000) for _ in range(ntraj)]
+
+    psis = np.asarray(pool.map( lambda z: SDE_helper(z[0],z[1]), zip(params,seeds) ))
+
+    ## Obtaining expectations of observables
     ## maybe there is a more efficient way to do this, but for now it's OK
     obsq_expects = (np.asarray([[ np.asarray([ob.dot(psi).dot(psi.conj())
                         for psi in psis[i]])
