@@ -22,7 +22,7 @@ import matplotlib as mil
 mil.use('TkAgg')
 import matplotlib.pyplot as plt
 
-def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True, ntraj=1, processes = 8, seed = 1):
+def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equation = True, normalize_state = True, ntraj=1, processes = 8, seed = 1):
     '''
     Args:
         H: NxN csr matrix, dtype = complex128
@@ -64,6 +64,8 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True,
         if a != N or b != N:
             raise ValueError("Every L should have dimensions NxN (same size as psi0).")
 
+    T_init = time()
+
     '''
     We include a way to update L*psi and l = <psi,L,psi> when t changes.
     This makes the code somewhat more efficient since these values are used
@@ -82,7 +84,7 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True,
             ls = [Lpsi.dot(psi.conj()) for Lpsi in Lpsis]
             t_old = t
 
-    if normalized: ## We'll include an option for non-normalized equations later...
+    if normalized_equation: ## We'll include an option for non-normalized equations later...
         def f(psi,t):
             update_Lpsis_and_ls(psi,t)
             return (-1j * H.dot(psi)
@@ -109,7 +111,7 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True,
         h = (tspan[N-1] - tspan[0])/(N - 1)
         np.random.seed(s)
         dW = np.random.normal(0.0, np.sqrt(h), (N, m))
-        return sdeint_method(*args,dW=dW)
+        return sdeint_method(*args,dW=dW,normalized=normalize_state)
 
     pool = Pool(processes=processes,)
     params = [[f,G,psi0_arr,tspan]] * ntraj
@@ -122,9 +124,12 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized = True,
     ## Obtaining expectations of observables
     ## maybe there is a more efficient way to do this, but for now it's OK
     obsq_expects = (np.asarray([[ np.asarray([ob.dot(psi).dot(psi.conj())
-                        for psi in psis[i]])
-                            for ob in obsq ] for i in range(ntraj)])
+                        for ob in obsq])
+                            for psi in psis[i] ] for i in range(ntraj)])
                                 if not obsq is None else None)
+
+    T_fin = time()
+    print ("Run time:  ", T_fin - T_init, " seconds.")
 
     return {"psis":psis, "obsq_expects":obsq_expects}
 
@@ -133,22 +138,19 @@ if __name__ == "__main__":
     psi0 = sparse.csr_matrix(([0,0,0,0,0,0,0,1.]),dtype=np.complex128).T
     H = sparse.csr_matrix(np.eye(8),dtype=np.complex128)
     Ls = [sparse.csr_matrix( np.diag([np.sqrt(i) for i in range(1,8)],k=1),dtype=np.complex128)]
-    tspan = np.linspace(0,0.5,5000)
+    tspan = np.linspace(0,10.0,1000)
     obsq = [sparse.csr_matrix(np.diag([i for i in range(4)]*2),dtype=np.complex128)]
 
     ntraj = 5
 
-    T_init = time()
-    D = qsd_solve(H, psi0, tspan, Ls, sdeint.itoSRI2, obsq = obsq, ntraj = ntraj)
-    T_fin = time()
+    D = qsd_solve(H, psi0, tspan, Ls, sdeint.itoSRI2, obsq = obsq, ntraj = ntraj, normalize_state = True)
 
     psis = D["psis"]
     obsq_expects = D["obsq_expects"]
 
-    print ("time to run:  ", T_fin - T_init, " seconds.")
     print ("Last point of traj 0: ",psis[0][-1])
     print ("Norm of last point in traj 0: ",la.norm(psis[0][-1]))  ## should be close to 1...
 
     for i in range(ntraj):
-        plt.plot(tspan,obsq_expects[i][0])
+        plt.plot(tspan,obsq_expects[i,:,0])
     plt.show()
