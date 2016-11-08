@@ -64,6 +64,16 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equatio
         if a != N or b != N:
             raise ValueError("Every L should have dimensions NxN (same size as psi0).")
 
+    ## Determine seeds for the SDEs
+    if type(seed) is list or type(seed) is tuple:
+        assert len(seed) == ntraj
+        seeds = seed
+    elif type(seed) is int or seed is None:
+        np.random.seed(seed)
+        seeds = [np.random.randint(1000000) for _ in range(ntraj)]
+    else:
+        raise ValueError("Unknown seed type.")
+
     T_init = time()
 
     '''
@@ -115,9 +125,6 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equatio
 
     pool = Pool(processes=processes,)
     params = [[f,G,psi0_arr,tspan]] * ntraj
-    if not seed is None:
-        np.random.seed(seed)
-    seeds = [np.random.randint(1000) for _ in range(ntraj)]
 
     psis = np.asarray(pool.map( lambda z: SDE_helper(z[0],z[1]), zip(params,seeds) ))
 
@@ -131,7 +138,7 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equatio
     T_fin = time()
     print ("Run time:  ", T_fin - T_init, " seconds.")
 
-    return {"psis":psis, "obsq_expects":obsq_expects}
+    return {"psis":psis, "obsq_expects":obsq_expects, "seeds":seeds}
 
 if __name__ == "__main__":
 
@@ -143,7 +150,7 @@ if __name__ == "__main__":
 
     ntraj = 5
 
-    D = qsd_solve(H, psi0, tspan, Ls, sdeint.itoSRI2, obsq = obsq, ntraj = ntraj, normalize_state = True)
+    D = qsd_solve(H, psi0, tspan, Ls, sdeint.itoSRI2, obsq = obsq, ntraj = ntraj, normalize_state = True )
 
     psis = D["psis"]
     obsq_expects = D["obsq_expects"]
