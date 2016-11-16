@@ -16,6 +16,7 @@ RUN wget https://repo.continuum.io/archive/Anaconda3-4.2.0-Linux-x86_64.sh
 RUN bash Anaconda3-4.2.0-Linux-x86_64.sh -b -p /usr/local/anaconda3
 RUN export PATH=/usr/local/anaconda3/bin:$PATH
 RUN echo "export PATH=/usr/local/anaconda3/bin:$PATH" >> $HOME/.bashrc
+RUN /usr/local/anaconda3/bin/conda install -y pyqt
 
 # Install modified sdeint package
 RUN git clone https://github.com/tabakg/sdeint
@@ -25,8 +26,8 @@ RUN cd sdeint && /usr/local/anaconda3/bin/python setup.py install
 RUN mkdir /code
 WORKDIR /code
 ADD requirements.txt /code/
-RUN pip install -r /code/requirements.txt
-RUN /usr/bin/yes | pip uninstall cython
+RUN /usr/local/anaconda3/bin/pip install -r /code/requirements.txt
+RUN /usr/bin/yes | /usr/local/anaconda3/bin/pip uninstall cython
 RUN apt-get remove -y gfortran
 ADD . /code/
 
@@ -34,4 +35,4 @@ RUN apt-get autoremove -y
 RUN apt-get clean
 RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-CMD ['python','/code/make_quantum_trajectory.py']
+CMD ['/usr/local/anaconda3/bin/python','/code/make_quantum_trajectory.py']

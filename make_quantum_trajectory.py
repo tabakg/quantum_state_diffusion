@@ -111,7 +111,7 @@ def get_parser():
     # Does the user want to quiet output?
     parser.add_argument("--output_dir", 
                         dest='outdir', 
-                        type='str',
+                        type=str,
                         help="Output folder. If not defined, will use PWD.",  
                         default=None)
 
