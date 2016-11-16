@@ -5,6 +5,12 @@
 # See also diffusion_maps/make_quantum_trajectories_absorptive_bistability
 # Requires Python 3.
 
+
+## When running on Mac OS, sometimes this is needed if Python is not installed
+## as a framework:
+import matplotlib as mil
+mil.use('TkAgg')
+
 ## QHDL package
 from qnet.algebra.operator_algebra import *
 from qnet.algebra.circuit_algebra import *
@@ -23,9 +29,6 @@ import numpy as np
 import numpy.linalg as la
 from scipy import sparse
 
-## plottinsg
-import matplotlib.pyplot as plt
-
 ## pickle
 import pickle
 
@@ -36,7 +39,7 @@ from save2matfile_or_pkl import save2matfile_or_pkl
 params = {}
 
 ntraj = params['Ntraj'] = 10
-duration = params['duration'] = 10000
+duration = params['duration'] = 10
 delta_t = params['delta_t'] = 2e-2
 Nfock_a = params['Nfock_a'] = 50
 Nfock_j = params['Nfock_j'] = 2
@@ -49,7 +52,7 @@ seed = [i for i in range(ntraj)]
 
 ## Names of files
 Regime = "absorptive_bistable"
-file_name = './trajectory_data/QSD_' + Regime
+file_name = './trajectory_data/QSD_' + Regime + "test"
 
 ### Which file formats to save trajectory data.
 ### Name of the file to save. The extension will be .mat for matlab and .pkl for pickle.
@@ -109,8 +112,6 @@ def make_nparams(Cn=10.5, kn=.12, yn=11.3, DDn=0, TTn=0., J = 0.5):
     }
     xrs = np.linspace(0, 10)
     yrs = 2*Cn*xrs/(1+xrs**2) + xrs
-    plt.plot(yrs, xrs)
-    plt.vlines([yn], *plt.ylim())
     return nparams
 
 if Regime == "absorptive_bistable":
