@@ -1,0 +1,7 @@
+matplotlib
+mpmath
+multiprocess
+numpy
+QNET
+qutip
+sympy

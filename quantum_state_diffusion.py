@@ -1,9 +1,10 @@
 '''
-Gil Tabak
+Quantum State Diffusion
 
-Nov 3, 2016
+Author: Gil Tabak
+Date: Nov 3, 2016
 
-This notebook uses the library sdeint to perform quantum state diffusion trajectories.
+This script uses the library sdeint to perform quantum state diffusion trajectories.
 The inputs are purposely similar to qubit functions like mcsolve to make
 integration easier later.
 
@@ -22,7 +23,8 @@ import matplotlib as mil
 mil.use('TkAgg')
 import matplotlib.pyplot as plt
 
-def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equation = True, normalize_state = True, ntraj=1, processes = 8, seed = 1):
+def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equation = True, 
+              normalize_state = True, ntraj=1, processes = 8, seed = 1):
     '''
     Args:
         H: NxN csr matrix, dtype = complex128
@@ -139,6 +141,7 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equatio
     print ("Run time:  ", T_fin - T_init, " seconds.")
 
     return {"psis":psis, "obsq_expects":obsq_expects, "seeds":seeds}
+
 
 if __name__ == "__main__":
 
