@@ -18,8 +18,7 @@ partition = 'normal'
 # Create subdirectories for job, error, and output files
 job_dir = "%s/.job"
 out_dir = "%s/.out"
-err_dir = "%s/.err"
-for new_dir in [job_dir,out_dir,err_dir]:
+for new_dir in [job_dir,out_dir]:
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
 
@@ -33,8 +32,8 @@ for seed in seeds:
     filey = open(filey,"w")
     filey.writelines("#!/bin/bash\n")
     filey.writelines("#SBATCH --job-name=qsd_%s\n" %(seed))
-    filey.writelines("#SBATCH --output=.out/qsd_%s.out\n" %(seed))
-    filey.writelines("#SBATCH --error=.out/qsd_%s.err\n" %(seed))
+    filey.writelines("#SBATCH --output=%s/qsd_%s.out\n" %(out_dir,seed))
+    filey.writelines("#SBATCH --error=%s/qsd_%s.err\n" %(out_dir,seed))
     filey.writelines("#SBATCH --time=2-00:00\n")
     filey.writelines("#SBATCH --mem=%s\n" %(memory))
     filey.writelines("singularity run --bind %s:/data/ qsd.img --output_dir /data --seed %s --save2pkl\n" %(output_dir,seed))
