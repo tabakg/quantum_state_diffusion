@@ -125,10 +125,53 @@ Note the `.` at the end of the command to specify the present working directory.
 
 
 ## Singularity
-Singularity is a container that is HPC friendly, meaning that it can be run on a cluster environment. We have provided a Singularity file that can bootstrap the Docker image to build the image.
+Singularity is a container that is HPC friendly, meaning that it can be run on a cluster environment. The container itself, a file that sits on your computer, can be dropped into a folder on your cluster, and run like a script! We have provided a Singularity file that can bootstrap the Docker image to build the image.
+
+### 1. Install Singularity
+
+Instructions can be found on the [singularity site](https://singularityware.github.io).
 
 
-**being written**
+### 2. Bootstrap the image
+
+    sudo singularity create --size 4000 qsd.img
+    sudo singularity bootstrap qsd.img Singularity
+
+
+## 3. Run commands
+
+How to access the python executable?
+
+
+      ./qsd.img --help
+
+You might again want to map a folder for the data output
+
+      singularity run -b /home/vanessa/Desktop:/data/ qsd.img --output_dir /data --save2pkl
+
+
+And you again might want to interactive work in the container
+
+
+      sudo singularity shell --writable qsd.img
+
+
+## Cluster Usage
+Running on a local machine is fine, but it will not scale well if you want to run thousands of times. Toward this aim, we have provided simple SLURM submission scripts to help! They are optimized for the [sherlock](http://sherlock.stanford.edu) cluster at Stanford (which has Singularity installed), however you can easily modify the submission command to run natively on a cluster without it (more detail below). For both, you can use the scripts in [slurm](slurm). You will want to do the following:
+
+
+### 1. Build the Singularity image
+Using the steps above, build the Singularity image, and use some form of FTP to transfer the image to your cluster. We must do this because it requires sudo to build and bootstrap the image, but not to run it (you do not have sudo permission on a cluster).
+
+### 2. Create a folder to work from
+In your $HOME folder in your cluster environment, you likely want to keep a folder to put your image, and organize input and output files:
+
+      cd $HOME
+      mkdir -p SCRIPTS/SINGULARITY/QSD
+      cd SCRIPTS/SINGULARITY/QSD # transfer qsd.img here
+
+And then write this content into a file:
+
 
 
 # Local Installation:

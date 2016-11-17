@@ -72,7 +72,7 @@ def get_parser():
                         dest='deltat', 
                         help="Parameter delta_t", 
                         type=float, 
-                        default=2e-2)
+                        default=2e-3)
 
     # Nfock_a
     parser.add_argument("--Nfock_a", 
@@ -162,10 +162,11 @@ def main():
 
     ## Names of files and output
     Regime = "absorptive_bistable"
+    param_str = "%s-%s-%s-%s-%s" %(ntraj,delta_t,Nfock_a,Nfock_j,duration)
     outdir = ""
     if args.outdir != None:
         outdir = args.outdir
-    file_name = '%s/QSD_%s' %(outdir,Regime) 
+    file_name = '%s/QSD_%s' %(outdir,Regime,param_str) 
 
     # Saving options
     save_mat = args.save2mat
