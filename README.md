@@ -16,7 +16,8 @@ You have several options for running the simulation, including container-based a
 
 - Docker 
 - Singularity
-- Virtual Environment
+- Local Environment
+- Cluster (SLURM example)
 
 Depending on your familiarity with containers, the first two are recommended to handle software dependencies. Complete instructions are included below.
 

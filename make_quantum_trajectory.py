@@ -171,7 +171,7 @@ def main():
     outdir = ""
     if args.outdir != None:
         outdir = args.outdir
-    file_name = '%s/QSD_%s' %(outdir,Regime,param_str) 
+    file_name = '%s/QSD_%s_%s' %(outdir,Regime,param_str) 
 
     # Saving options
     save_mat = args.save2mat
