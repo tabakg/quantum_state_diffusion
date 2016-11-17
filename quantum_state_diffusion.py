@@ -1,9 +1,10 @@
 '''
-Gil Tabak
+Quantum State Diffusion
 
-Nov 3, 2016
+Author: Gil Tabak
+Date: Nov 3, 2016
 
-This notebook uses the library sdeint to perform quantum state diffusion trajectories.
+This script uses the library sdeint to perform quantum state diffusion trajectories.
 The inputs are purposely similar to qubit functions like mcsolve to make
 integration easier later.
 
@@ -17,12 +18,8 @@ from time import time
 
 from multiprocess import Pool
 
-### Plotting
-import matplotlib as mil
-mil.use('TkAgg')
-import matplotlib.pyplot as plt
-
-def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equation = True, normalize_state = True, ntraj=1, processes = 8, seed = 1):
+def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equation = True, 
+              normalize_state = True, ntraj=1, processes = 8, seed = 1):
     '''
     Args:
         H: NxN csr matrix, dtype = complex128
@@ -140,6 +137,7 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equatio
 
     return {"psis":psis, "obsq_expects":obsq_expects, "seeds":seeds}
 
+
 if __name__ == "__main__":
 
     psi0 = sparse.csr_matrix(([0,0,0,0,0,0,0,1.]),dtype=np.complex128).T
@@ -157,7 +155,3 @@ if __name__ == "__main__":
 
     print ("Last point of traj 0: ",psis[0][-1])
     print ("Norm of last point in traj 0: ",la.norm(psis[0][-1]))  ## should be close to 1...
-
-    for i in range(ntraj):
-        plt.plot(tspan,obsq_expects[i,:,0])
-    plt.show()
