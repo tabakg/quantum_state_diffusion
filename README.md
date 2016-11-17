@@ -32,24 +32,27 @@ The development environment is Dockerized, meaning that you can run the simulati
 will show you the following (after a message about the font cache):
 
 
-	usage: make_quantum_trajectory.py [-h] [--ntraj NTRAJ] [--duration DURATION]
-		                          [--delta_t DELTAT] [--Nfock_a NFOCKA]
-		                          [--Nfock_j NFOCKJ] [--downsample DOWNSAMPLE]
-		                          [--verbose] [--output_dir OUTDIR]
-		                          [--save2pkl] [--save2mat]
+	usage: make_quantum_trajectory.py [-h] [--seed SEED] [--ntraj NTRAJ]
+		                          [--duration DURATION] [--delta_t DELTAT]
+		                          [--Nfock_a NFOCKA] [--Nfock_j NFOCKJ]
+		                          [--downsample DOWNSAMPLE] [--quiet]
+		                          [--output_dir OUTDIR] [--save2pkl]
+		                          [--save2mat]
 
 	generating trajectories using quantum state diffusion
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  --ntraj NTRAJ         Parameter Ntraj
+	  --seed SEED           Seed to set for the simulation.
+	  --ntraj NTRAJ         number of trajectories, should be kept at 1 if run via
+		                slurm
 	  --duration DURATION   Duration in ()
 	  --delta_t DELTAT      Parameter delta_t
 	  --Nfock_a NFOCKA      Parameter N_focka
 	  --Nfock_j NFOCKJ      Parameter N_fockj
 	  --downsample DOWNSAMPLE
 		                How much to downsample results
-	  --verbose             Turn on verbose logging (debug and info)
+	  --quiet               Turn off logging (debug and info)
 	  --output_dir OUTDIR   Output folder. If not defined, will use PWD.
 	  --save2pkl            Save pickle file to --output_dir
 	  --save2mat            Save .mat file to --output_dir
@@ -57,7 +60,7 @@ will show you the following (after a message about the font cache):
 
 ### Run and save to local machine
 
-Note that the `--verbose` option can be added for better debugging. By default, no data is saved. To save, you will need to 1) specify the output directory to the `/data` folder in the container using the `output_dir` argument and 2) map some directory on your local machine to this `/data` folder.  We can do that like this:
+Note that the `--quiet` option can be added to silence printing. By default, no data is saved. To save, you will need to 1) specify the output directory to the `/data` folder in the container using the `output_dir` argument and 2) map some directory on your local machine to this `/data` folder.  We can do that like this:
 
 
            # on your local machine, let's say we want to save to Desktop
@@ -67,20 +70,23 @@ Note that the `--verbose` option can be added for better debugging. By default, 
            
 The above will produce the following output:
 
-	INFO:root:Parameter duration set to 10
-	INFO:root:Parameter delta_t set to 0.02
+
+	INFO:root:Parameter Ntraj set to 1
 	INFO:root:Parameter Nfock_j set to 2
+	INFO:root:Parameter duration set to 10
+	INFO:root:Parameter delta_t set to 0.002
+	INFO:root:Parameter downsample set to 100
 	INFO:root:Parameter Nfock_a set to 50
-	INFO:root:Parameter Ntraj set to 10
+	INFO:root:Parameter seed set to 1
 	INFO:root:Downsample set to 100
 	INFO:root:Regime is set to absorptive_bistable
-	Run time:   1.2244760990142822  seconds.
+	Run time:   2.1634318828582764  seconds.
 	INFO:root:Saving pickle file...
-	INFO:root:Saving result to /data/QSD_absorptive_bistable.pkl
-	INFO:root:Data saved to pickle file /data/QSD_absorptive_bistable
+	INFO:root:Saving result to /data/QSD_absorptive_bistable_1-1-0.002-50-2-10.pkl
+	INFO:root:Data saved to pickle file /data/QSD_absorptive_bistable_1-1-0.002-50-2-10
 
 
-The final output will be in the mapped folder - in the example above, this would be my Desktop at `/home/vanessa/Desktop/QSD_absorptive_bistable.pkl`
+The final output will be in the mapped folder - in the example above, this would be my Desktop at `/home/vanessa/Desktop/QSD_absorptive_bistable*.pkl`
 
 
 ### Run inside container
@@ -94,24 +100,26 @@ if you type `ls` you will see that we are sitting in the `/code` directory that 
 
 
 	/code# python make_quantum_trajectory.py --output_dir /data --save2pkl
+	INFO:root:Parameter downsample set to 100
 	INFO:root:Parameter duration set to 10
-	INFO:root:Parameter Ntraj set to 10
-	INFO:root:Parameter Nfock_a set to 50
+	INFO:root:Parameter seed set to 1
 	INFO:root:Parameter Nfock_j set to 2
-	INFO:root:Parameter delta_t set to 0.02
+	INFO:root:Parameter Nfock_a set to 50
+	INFO:root:Parameter delta_t set to 0.002
+	INFO:root:Parameter Ntraj set to 1
 	INFO:root:Downsample set to 100
 	INFO:root:Regime is set to absorptive_bistable
-	Run time:   1.1898915767669678  seconds.
+	Run time:   2.183995485305786  seconds.
 	INFO:root:Saving pickle file...
-	INFO:root:Saving result to /data/QSD_absorptive_bistable.pkl
-	INFO:root:Data saved to pickle file /data/QSD_absorptive_bistable
-
+	INFO:root:Saving result to /data/QSD_absorptive_bistable_1-1-0.002-50-2-10.pkl
+	INFO:root:Data saved to pickle file /data/QSD_absorptive_bistable_1-1-0.002-50-2-10
 
 and the data is inside the container with us! Great.
 
 	root@4420ae9e385d:/code# ls /data
-	QSD_absorptive_bistable.pkl
+	QSD_absorptive_bistable_1-1-0.002-50-2-10.pkl
       
+
 
 ### Customize the Docker image
 If you don't want to use the image from Docker Hub (for example, if you want to make changes first) you can also build the image locally. You can build the image by doing the following:
@@ -145,17 +153,20 @@ How to access the python executable?
 
 
       ./qsd.img --help
-	usage: make_quantum_trajectory.py [-h] [--ntraj NTRAJ] [--duration DURATION]
-		                          [--delta_t DELTAT] [--Nfock_a NFOCKA]
-		                          [--Nfock_j NFOCKJ] [--downsample DOWNSAMPLE]
-		                          [--quiet] [--output_dir OUTDIR] [--save2pkl]
+	usage: make_quantum_trajectory.py [-h] [--seed SEED] [--ntraj NTRAJ]
+		                          [--duration DURATION] [--delta_t DELTAT]
+		                          [--Nfock_a NFOCKA] [--Nfock_j NFOCKJ]
+		                          [--downsample DOWNSAMPLE] [--quiet]
+		                          [--output_dir OUTDIR] [--save2pkl]
 		                          [--save2mat]
 
 	generating trajectories using quantum state diffusion
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  --ntraj NTRAJ         Parameter Ntraj
+	  --seed SEED           Seed to set for the simulation.
+	  --ntraj NTRAJ         number of trajectories, should be kept at 1 if run via
+		                slurm
 	  --duration DURATION   Duration in ()
 	  --delta_t DELTAT      Parameter delta_t
 	  --Nfock_a NFOCKA      Parameter N_focka
@@ -178,6 +189,8 @@ And you again might want to interactive work in the container
 
 
       sudo singularity shell --writable qsd.img
+      cd /code
+      ls
 
 
 ## Cluster Usage
@@ -194,8 +207,25 @@ In your $HOME folder in your cluster environment, you likely want to keep a fold
       mkdir -p SCRIPTS/SINGULARITY/QSD
       cd SCRIPTS/SINGULARITY/QSD # transfer qsd.img here
 
-And then write this content into a file:
+And then write [run.py](slurm/run.py) into a file in that location. In a nutshell, this script is going to create local directories for jobs, output, and error files (`.job`,`.out`,`.err`), and then iterate through a variable in the simulation (the `seed`) and submit a job for each on our partition of choice. The variables you should / might be interested in editing are in the header:
 
+
+
+
+## Data Output
+Each pickle file contains the simulation result, along with the dictionary of analysis parameters. For example, here we are loading a pickle result file:
+
+
+    import pickle
+    mdict = pickle.load(open('QSD_absorptive_bistable_1-1-0.002-50-2-10.pkl','rb'))
+
+    # What result keys are available?
+    result.keys()
+    dict_keys(['Nfock_a', 'Ntraj', 'observable_str', 'Nfock_j', 'times', 'psis', 'downsample',   
+               'seeds', 'expects', 'delta_t', 'seed', 'duration', 'observable_latex'
+
+
+With this data, you can do interactive plotting and further analysis, examples which will be provided in this repo (under development).
 
 
 # Local Installation:

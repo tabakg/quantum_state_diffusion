@@ -1,0 +1,42 @@
+#!/usr/bin/python env
+
+'''
+Quantum State Diffusion: Submit jobs on SLURM
+
+'''
+
+import os
+
+# Variables to run jobs
+basedir = os.path.abspath("../")
+output_dir = '/scratch/users/vsochat/DATA/SINGULARITY/QSD'
+
+# Variables for each job
+memory = 12000
+partition = 'normal'
+
+# Create subdirectories for job, error, and output files
+job_dir = "%s/.job"
+out_dir = "%s/.out"
+err_dir = "%s/.err"
+for new_dir in [job_dir,out_dir,err_dir]:
+    if not os.path.exists(new_dir):
+        os.mkdir(new_dir)
+
+# We are going to vary the seed argument, and generate and submit a job for each
+seeds = range(1,10000)
+
+for seed in seeds: 
+    print "Processing seed %s" %(seed)
+    # Write job to file
+    filey = ".job/qsd_%s.job" %(seed)
+    filey = open(filey,"w")
+    filey.writelines("#!/bin/bash\n")
+    filey.writelines("#SBATCH --job-name=qsd_%s\n" %(seed))
+    filey.writelines("#SBATCH --output=.out/qsd_%s.out\n" %(seed))
+    filey.writelines("#SBATCH --error=.out/qsd_%s.err\n" %(seed))
+    filey.writelines("#SBATCH --time=2-00:00\n")
+    filey.writelines("#SBATCH --mem=%s\n" %(memory))
+    filey.writelines("singularity run --bind %s:/data/ qsd.img --output_dir /data --seed %s --save2pkl\n" %(output_dir,seed))
+    filey.close()
+    os.system("sbatch -p %s .job/qsd_%s.job" %(partition,seed))

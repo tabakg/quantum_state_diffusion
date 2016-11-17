@@ -167,7 +167,7 @@ def main():
 
     ## Names of files and output
     Regime = "absorptive_bistable"
-    param_str = "%s-%s-%s-%s-%s" %(ntraj,delta_t,Nfock_a,Nfock_j,duration)
+    param_str = "%s-%s-%s-%s-%s-%s" %(seed,ntraj,delta_t,Nfock_a,Nfock_j,duration)
     outdir = ""
     if args.outdir != None:
         outdir = args.outdir
