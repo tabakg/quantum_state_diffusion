@@ -9,7 +9,7 @@ import os
 
 # Variables to run jobs
 basedir = os.path.abspath("../")
-output_dir = '/scratch/users/vsochat/DATA/SINGULARITY/QSD'
+output_dir = '/scratch/users/vsochat/IMAGES/singularity/quantumsd/result'
 
 # Variables for each job
 memory = 12000
@@ -18,7 +18,7 @@ partition = 'normal'
 # Create subdirectories for job, error, and output files
 job_dir = "%s/.job"
 out_dir = "%s/.out"
-for new_dir in [job_dir,out_dir]:
+for new_dir in [output_dir,job_dir,out_dir]:
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
 
