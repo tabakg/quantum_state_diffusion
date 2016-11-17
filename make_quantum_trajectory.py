@@ -70,7 +70,7 @@ def get_parser():
     # Duration
     parser.add_argument("--duration", 
                         dest='duration', 
-                        help="Duration in ()", 
+                        help="Duration (iterations = duration / divided by delta_t)", 
                         type=int, 
                         default=10)
 
