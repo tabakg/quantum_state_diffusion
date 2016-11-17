@@ -52,13 +52,20 @@ def get_parser():
     # Simulation Parameters
     ################################################################################
 
+    # Seed
+    parser.add_argument("--seed", 
+                        dest='seed', 
+                        help="Seed to set for the simulation.", 
+                        type=int, 
+                        default=1)
 
-    # Ntraj
+
+    # Number of trajectories
     parser.add_argument("--ntraj", 
                         dest='ntraj', 
-                        help="Parameter Ntraj", 
+                        help="number of trajectories, should be kept at 1 if run via slurm", 
                         type=int, 
-                        default=10)
+                        default=1)
 
     # Duration
     parser.add_argument("--duration", 
@@ -142,10 +149,12 @@ def main():
     # Set up commands from parser
     params = dict()
     ntraj = params['Ntraj'] = args.ntraj
+    seed = params['seed'] = args.seed
     duration = params['duration'] = args.duration
     delta_t = params['delta_t'] = args.deltat
     Nfock_a = params['Nfock_a'] = args.nfocka
     Nfock_j = params['Nfock_j'] = args.nfockj
+    downsample = params['downsample'] = args.downsample
     
     # Does the user want to print verbose output?
     quiet = args.quiet
@@ -154,11 +163,7 @@ def main():
         print_params(params=params)
 
     # How much to downsample results
-    downsample = args.downsample
     logging.info("Downsample set to %s",downsample)
-
-    # Seeds for simulation
-    seed = [i for i in range(ntraj)]
 
     ## Names of files and output
     Regime = "absorptive_bistable"
@@ -252,12 +257,14 @@ def main():
         logging.info("Saving mat file...")
         save2mat(data=D_downsampled, 
                  file_name=file_name, 
-                 obs=obs)
+                 obs=obs,
+                 params=params)
     if save_pkl:
         logging.info("Saving pickle file...")
         save2pkl(data=D_downsampled, 
                  file_name=file_name, 
-                 obs=obs)
+                 obs=obs,
+                 params=params)
 
 
 if __name__ == '__main__':

@@ -4,9 +4,10 @@ IncludeCmd: yes
 
 %runscript
 
-    exec /usr/local/anaconda3/bin/python /code/quantum_state_diffusion.py "$@"
+    exec /usr/local/anaconda3/bin/python /code/make_quantum_trajectory.py "$@"
 
 
 % post
 
-    echo "To run, ./qsd.img [args]..."
+    sudo chmod -R 777 /data 
+    echo "To run, ./qsd.img --help"

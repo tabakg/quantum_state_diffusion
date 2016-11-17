@@ -144,10 +144,33 @@ How to access the python executable?
 
 
       ./qsd.img --help
+	usage: make_quantum_trajectory.py [-h] [--ntraj NTRAJ] [--duration DURATION]
+		                          [--delta_t DELTAT] [--Nfock_a NFOCKA]
+		                          [--Nfock_j NFOCKJ] [--downsample DOWNSAMPLE]
+		                          [--quiet] [--output_dir OUTDIR] [--save2pkl]
+		                          [--save2mat]
+
+	generating trajectories using quantum state diffusion
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  --ntraj NTRAJ         Parameter Ntraj
+	  --duration DURATION   Duration in ()
+	  --delta_t DELTAT      Parameter delta_t
+	  --Nfock_a NFOCKA      Parameter N_focka
+	  --Nfock_j NFOCKJ      Parameter N_fockj
+	  --downsample DOWNSAMPLE
+		                How much to downsample results
+	  --quiet               Turn off logging (debug and info)
+	  --output_dir OUTDIR   Output folder. If not defined, will use PWD.
+	  --save2pkl            Save pickle file to --output_dir
+	  --save2mat            Save .mat file to --output_dir
+
 
 You might again want to map a folder for the data output
 
-      singularity run -b /home/vanessa/Desktop:/data/ qsd.img --output_dir /data --save2pkl
+
+      singularity run --bind /home/vanessa/Desktop:/data/ qsd.img --output_dir /data --save2pkl
 
 
 And you again might want to interactive work in the container
