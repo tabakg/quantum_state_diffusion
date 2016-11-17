@@ -9,5 +9,8 @@ IncludeCmd: yes
 
 % post
 
-    sudo chmod -R 777 /data 
+    mkdir -p /share/PI
+    mkdir -p /scratch
+    mkdir -p /local-scratch
+    sudo chmod -R 777 /data
     echo "To run, ./qsd.img --help"

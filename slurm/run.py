@@ -36,6 +36,7 @@ for seed in seeds:
     filey.writelines("#SBATCH --error=%s/qsd_%s.err\n" %(out_dir,seed))
     filey.writelines("#SBATCH --time=2-00:00\n")
     filey.writelines("#SBATCH --mem=%s\n" %(memory))
+    filey.writelines("module load singularity\n")
     filey.writelines("singularity run --bind %s:/data/ qsd.img --output_dir /data --seed %s --save2pkl\n" %(output_dir,seed))
     filey.close()
     os.system("sbatch -p %s .job/qsd_%s.job" %(partition,seed))
