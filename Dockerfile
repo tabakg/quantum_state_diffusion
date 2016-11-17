@@ -9,7 +9,11 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     openssl \
     wget \
-    git
+    git \
+    vim
+
+# For mapping data to
+RUN mkdir /data
 
 # Install anaconda 3
 RUN wget https://repo.continuum.io/archive/Anaconda3-4.2.0-Linux-x86_64.sh
@@ -27,7 +31,6 @@ RUN mkdir /code
 WORKDIR /code
 ADD requirements.txt /code/
 RUN /usr/local/anaconda3/bin/pip install -r /code/requirements.txt
-RUN /usr/bin/yes | /usr/local/anaconda3/bin/pip uninstall cython
 RUN apt-get remove -y gfortran
 ADD . /code/
 
@@ -35,4 +38,4 @@ RUN apt-get autoremove -y
 RUN apt-get clean
 RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-CMD ['/usr/local/anaconda3/bin/python','/code/make_quantum_trajectory.py']
+ENTRYPOINT ["/usr/local/anaconda3/bin/python","/code/make_quantum_trajectory.py"]

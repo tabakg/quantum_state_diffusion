@@ -102,10 +102,10 @@ def get_parser():
 
 
     # Does the user want to quiet output?
-    parser.add_argument("--verbose", 
-                        dest='verbose', 
+    parser.add_argument("--quiet", 
+                        dest='quiet', 
                         action="store_true",
-                        help="Turn on verbose logging (debug and info)",  
+                        help="Turn off logging (debug and info)",  
                         default=False)
 
     # Does the user want to quiet output?
@@ -129,6 +129,7 @@ def get_parser():
                         action="store_true",
                         help="Save .mat file to --output_dir",  
                         default=False)
+    return parser
 
 
 def main():
@@ -136,7 +137,6 @@ def main():
     try:
         args = parser.parse_args()
     except:
-        parser.print_help()
         sys.exit(0)
 
     # Set up commands from parser
@@ -148,13 +148,14 @@ def main():
     Nfock_j = params['Nfock_j'] = args.nfockj
     
     # Does the user want to print verbose output?
-    verbose = args.verbose
+    quiet = args.quiet
 
-    if verbose:
+    if not quiet:
         print_params(params=params)
 
     # How much to downsample results
     downsample = args.downsample
+    logging.info("Downsample set to %s",downsample)
 
     # Seeds for simulation
     seed = [i for i in range(ntraj)]
@@ -164,7 +165,7 @@ def main():
     outdir = ""
     if args.outdir != None:
         outdir = args.outdir
-    file_name = '%s/trajectory_data/QSD_%s_test' %(outdir,Regime) 
+    file_name = '%s/QSD_%s' %(outdir,Regime) 
 
     # Saving options
     save_mat = args.save2mat
@@ -190,7 +191,6 @@ def main():
     jy = (jp - j) / 2.
 
     # ## Make SLH Model
-
     k,g0,g = symbols("kappa, g0,gamma", positive=True)
     DD, TT = symbols("Delta, Theta", real=True)
     W = symbols("Omega")
@@ -209,7 +209,7 @@ def main():
 
     if Regime == "absorptive_bistable":
         logging.info("Regime is set to %s", Regime)
-        nparams = make_nparams()
+        nparams = make_nparams(W=W,k=k,g=g,g0=g0,DD=DD,TT=TT)
     else:
         logging.error("Unknown regime, %s, or not implemented yet.", Regime)
         raise ValueError("Unknown regime, or not implemented yet.")
@@ -254,7 +254,7 @@ def main():
                  obs=obs)
     if save_pkl:
         logging.info("Saving pickle file...")
-        save2mat(data=D_downsampled, 
+        save2pkl(data=D_downsampled, 
                  file_name=file_name, 
                  obs=obs)
 

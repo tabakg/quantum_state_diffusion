@@ -1,5 +1,4 @@
 from scipy.io import savemat
-#from IPython.display import FileLink, display
 import numpy as np
 import pickle
 import logging
@@ -20,19 +19,22 @@ def save2mat(data, file_name, obs, params=None):
     :param obs:
     :param params: extra params to add to the save object
     '''
-    data = prepare_save(data,obs,params=params)
-    savemat(file_name, mdict)
+    logging.info("Saving result to %s.mat", file_name)
+    mdict = prepare_save(data,file_name,obs,params)
+    savemat("%s.mat" %file_name, mdict)
     logging.info("Data saved to .mat file %s",file_name)
 
 
-def save2pkl(data, file_name, obs, params=None):
+def save2pkl(data,file_name,obs, params=None):
     ''' save2pkl saves to a pickle file
     :param data: the data dictionary object
     :param file_name: the file name (with extension) to save to
     :param obs:
     :param params: extra params to add to the save object
     '''
-    output = open(file_name + ".pkl", 'wb')
+    logging.info("Saving result to %s.pkl", file_name)
+    mdict = prepare_save(data,file_name,obs,params)
+    output = open("%s.pkl" %file_name, 'wb')
     pickle.dump(mdict,output,protocol=0)
     output.close()
     logging.info("Data saved to pickle file %s", file_name)
@@ -79,7 +81,10 @@ def prepare_save(data, file_name, obs, params=None):
 
 
 # default are for absorptive bistability
-def make_nparams(Cn=10.5, kn=.12, yn=11.3, DDn=0, TTn=0., J = 0.5):
+def make_nparams(W,k,g,g0,DD,TT,Cn=10.5, 
+                 kn=.12, yn=11.3, DDn=0, TTn=0., J = 0.5):
+
+
     g0n = np.sqrt(2.*kn*Cn)
     Wn = yn*kn/np.sqrt(2)/g0n
 
@@ -91,6 +96,7 @@ def make_nparams(Cn=10.5, kn=.12, yn=11.3, DDn=0, TTn=0., J = 0.5):
         DD: DDn,
         TT: TTn,
     }
+
     xrs = np.linspace(0, 10)
     yrs = 2*Cn*xrs/(1+xrs**2) + xrs
     return nparams

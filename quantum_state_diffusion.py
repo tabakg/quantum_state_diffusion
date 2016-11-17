@@ -18,11 +18,6 @@ from time import time
 
 from multiprocess import Pool
 
-### Plotting
-import matplotlib as mil
-mil.use('TkAgg')
-import matplotlib.pyplot as plt
-
 def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equation = True, 
               normalize_state = True, ntraj=1, processes = 8, seed = 1):
     '''
@@ -160,7 +155,3 @@ if __name__ == "__main__":
 
     print ("Last point of traj 0: ",psis[0][-1])
     print ("Norm of last point in traj 0: ",la.norm(psis[0][-1]))  ## should be close to 1...
-
-    for i in range(ntraj):
-        plt.plot(tspan,obsq_expects[i,:,0])
-    plt.show()
