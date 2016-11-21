@@ -18,8 +18,8 @@ from time import time
 
 from multiprocess import Pool
 
-def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equation = True, 
-              normalize_state = True, ntraj=1, processes = 8, seed = 1):
+def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equation = True,
+              normalize_state = True, ntraj=1, processes = 8, seed = 1, using_multiprocess = False):
     '''
     Args:
         H: NxN csr matrix, dtype = complex128
@@ -40,7 +40,9 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equatio
         ntraj (optional): int
             number of trajectories.
         processes (optional): int
-            number of processes. If processes == 1, don't use multiprocessing.
+            number of processes, if using_multiprocess == True
+        using_multiprocess (optional): Boolean
+            If true, use multiprocess. Otherwise, do not.
 
     Returns:
         A dictionary with the following keys and values:
@@ -107,23 +109,24 @@ def qsd_solve(H, psi0, tspan, Ls, sdeint_method, obsq = None, normalized_equatio
 
     psi0_arr = np.asarray(psi0.todense()).T[0]
 
-    # '''single processing'''
-    # psis = np.asarray([ sdeint_method(f,G,psi0_arr,tspan) for _ in range(ntraj)])
+    if using_multiprocess:
+        '''multiprocessing'''
+        def SDE_helper(args,s):
+            '''Let's make different wiener increments for each trajectory'''
+            m = 2 * len(Ls)
+            N = len(tspan)-1
+            h = (tspan[N-1] - tspan[0])/(N - 1)
+            np.random.seed(s)
+            dW = np.random.normal(0.0, np.sqrt(h), (N, m))
+            return sdeint_method(*args,dW=dW,normalized=normalize_state)
 
-    '''multiprocessing'''
-    def SDE_helper(args,s):
-        '''Let's make different wiener increments for each trajectory'''
-        m = 2 * len(Ls)
-        N = len(tspan)-1
-        h = (tspan[N-1] - tspan[0])/(N - 1)
-        np.random.seed(s)
-        dW = np.random.normal(0.0, np.sqrt(h), (N, m))
-        return sdeint_method(*args,dW=dW,normalized=normalize_state)
+        pool = Pool(processes=processes,)
+        params = [[f,G,psi0_arr,tspan]] * ntraj
 
-    pool = Pool(processes=processes,)
-    params = [[f,G,psi0_arr,tspan]] * ntraj
-
-    psis = np.asarray(pool.map( lambda z: SDE_helper(z[0],z[1]), zip(params,seeds) ))
+        psis = np.asarray(pool.map( lambda z: SDE_helper(z[0],z[1]), zip(params,seeds) ))
+    else:
+        '''single processing'''
+        psis = np.asarray([ sdeint_method(f,G,psi0_arr,tspan) for _ in range(ntraj)])
 
     ## Obtaining expectations of observables
     ## maybe there is a more efficient way to do this, but for now it's OK
