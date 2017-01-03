@@ -1,13 +1,12 @@
-Bootstrap: docker
+BootStrap: docker
 From: tabakg/quantum_state_diffusion
-IncludeCmd: yes
 
 %runscript
 
     exec /usr/local/anaconda3/bin/python /code/make_quantum_trajectory.py "$@"
 
 
-% post
+%post
 
     mkdir -p /share/PI
     mkdir -p /scratch
