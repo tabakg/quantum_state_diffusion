@@ -2,8 +2,7 @@
 
 The script [quantum_state_diffusion.py](quantum_state_diffusion.py) can be 
 used to run QSD simulations.
-I am using a (slightly) modified version of a package called sdeint. The only
-modification I made is to normalize the trajectories for numerical stability.
+I am using a (slightly) modified version of a package called sdeint. The only modification I made is to normalize the trajectories for numerical stability.
 
 My version can be found on [https://github.com/tabakg/sdeint](https://github.com/tabakg/sdeint)
 
