@@ -1,5 +1,4 @@
 from scipy.io import savemat
-import numpy as np
 import pickle
 import logging
 
@@ -42,7 +41,7 @@ def save2pkl(data,file_name,obs, params=None):
 
 def prepare_save(data, file_name, obs, params=None):
     """prepare_save: takes an mcdata object and the observables and stores the states,
-    expectations, times, observable labels (str and latex), random seeds, 
+    expectations, times, observable labels (str and latex), random seeds,
     number of trajectories as:
 
         {
@@ -76,28 +75,5 @@ def prepare_save(data, file_name, obs, params=None):
     }
     if params != None:
         mdict.update(params) ## other paramters (optional)
-    
+
     return mdict
-
-
-# default are for absorptive bistability
-def make_nparams(W,k,g,g0,DD,TT,Cn=10.5, 
-                 kn=.12, yn=11.3, DDn=0, TTn=0., J = 0.5):
-
-
-    g0n = np.sqrt(2.*kn*Cn)
-    Wn = yn*kn/np.sqrt(2)/g0n
-
-    nparams = {
-        W: Wn/np.sqrt(2*kn),
-        k: 2*kn,
-        g: 2./np.sqrt(2*J),
-        g0: -g0n/np.sqrt(2*J),
-        DD: DDn,
-        TT: TTn,
-    }
-
-    xrs = np.linspace(0, 10)
-    yrs = 2*Cn*xrs/(1+xrs**2) + xrs
-    return nparams
-

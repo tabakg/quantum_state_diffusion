@@ -1,4 +1,3 @@
-mpmath
 multiprocess
 numpy
 QNET
