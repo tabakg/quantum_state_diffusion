@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     libopenblas-dev \
     gfortran \
     libhdf5-dev \
-    libgeos-dev \ 
+    libgeos-dev \
     build-essential \
     openssl \
     wget \
@@ -21,6 +21,7 @@ RUN bash Anaconda3-4.2.0-Linux-x86_64.sh -b -p /usr/local/anaconda3
 RUN export PATH=/usr/local/anaconda3/bin:$PATH
 RUN echo "export PATH=/usr/local/anaconda3/bin:$PATH" >> $HOME/.bashrc
 RUN /usr/local/anaconda3/bin/conda install -y pyqt
+RUN /usr/local/anaconda3/bin/conda install -y libgcc
 
 # Install modified sdeint package
 RUN git clone https://github.com/tabakg/sdeint

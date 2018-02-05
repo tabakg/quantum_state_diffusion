@@ -25,7 +25,11 @@ from utils import (
     print_params
 )
 
-from prepare_regime import make_system_JC
+from prepare_regime import (
+    make_system_JC,
+    make_system_kerr_bistable,
+    make_system_kerr_qubit
+)
 
 import sdeint
 
@@ -186,11 +190,21 @@ def main():
     logging.info("Downsample set to %s",downsample)
 
     ## Names of files and output
-    param_str = "%s-%s-%s-%s-%s-%s" %(seed,ntraj,delta_t,Nfock_a,Nfock_j,duration)
-    outdir = ""
-    if args.outdir != None:
+    if args.outdir is None:
+        outdir = os.getcwd()
+    else:
         outdir = args.outdir
-    file_name = '%s/QSD_%s_%s' %(outdir,Regime,param_str)
+
+    ## make a folder for trajectory data
+    directory_name = "/trajectory_data"
+    traj_folder = (outdir + directory_name)
+    try:
+        os.stat(traj_folder)
+    except:
+        os.mkdir(traj_folder)
+
+    param_str = "%s-%s-%s-%s-%s-%s" %(seed,ntraj,delta_t,Nfock_a,Nfock_j,duration)
+    file_name = '%s/QSD_%s_%s' %(traj_folder,Regime,param_str)
 
     # Saving options
     save_mat = args.save2mat
@@ -202,7 +216,11 @@ def main():
 
     if Regime == "absorptive_bistable":
         logging.info("Regime is set to %s", Regime)
-        H, psi0, Ls, obsq_data = make_system_JC(Nfock_a, Nfock_j)
+        H, psi0, Ls, obsq_data, obs = make_system_JC(Nfock_a, Nfock_j)
+    elif Regime == "kerr_bistable":
+        H, psi0, Ls, obsq_data, obs = make_system_kerr_bistable(Nfock_a)
+    elif Regime == "kerr_qubit":
+        H, psi0, Ls, obsq_data, obs = make_system_kerr_qubit(Nfock_a)
     else:
         logging.error("Unknown regime, %s, or not implemented yet.", Regime)
         raise ValueError("Unknown regime, or not implemented yet.")
