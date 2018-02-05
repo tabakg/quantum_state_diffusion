@@ -78,51 +78,14 @@ def make_system_JC(Nfock_a, Nfock_j):
     return H, psi0, Ls, obsq_data, obs
 
 def make_system_kerr_bistable(Nfock):
-
-    Regime = "kerr_bistable"
-
-    # Define Kerr parameters
-    chi = symbols("chi", real=True, positive=True)
-    Delta = symbols("Delta", real=True)
-    kappa_1, kappa_2 = symbols("kappa_1, kappa_2", real=True, positive=True)
-    alpha0 = symbols("alpha_0")
-
-    params = {alpha0 : 21.75, chi : -10, Delta : 100., kappa_1 : 25, kappa_2 : 25}
-
-    # Construct Kerr SLH
-    a_k = Destroy("k")
-    S = -identity_matrix(2)
-    L = [sqrt(kappa_1)*a_k, sqrt(kappa_2)*a_k]
-    H = Delta*a_k.dag()*a_k + chi/2*a_k.dag()*a_k.dag()*a_k*a_k
-    KERR = SLH(S, L, H).toSLH()
-
-    # Add coherent drive
-    SYS = KERR << Displace(alpha=alpha0)+cid(1)
-    SYS = SYS.toSLH()
-
-    # SYS_no_drive = KERR.toSLH()
-
-    SYS_num = SYS.substitute(params)
-    # SYS_num_no_drive = SYS_no_drive.substitute(params)
-
-    SYS_num.space.dimension = Nfock
-    # SYS_num_no_drive.space.dimension = Nfock
-
-    Hq, Lqs = SYS_num.HL_to_qutip()
-
-    ## Observables
-    obs = [a_k.dag()*a_k, a_k+a_k.dag(), (a_k-a_k.dag())/1j]
-    obsq = [o.to_qutip(full_space = SYS_num.space) for o in obs]
-
-    psi0 = qutip.tensor(qutip.basis(Nfock,0)).data
-    H = Hq.data
-    Ls = [Lq.data for Lq in Lqs]
-    obsq_data = [ob.data for ob in obsq]
-    return H, psi0, Ls, obsq_data, obs
-
+    params_dict = {"alpha0" : 21.75, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
+    return make_system_kerr(Nfock, params_dict)
 
 def make_system_kerr_qubit(Nfock):
+    params_dict = {"alpha0" : 10.0, "chi" : -100, "Delta" : 0., "kappa_1" : 0.5, "kappa_2" : 0}
+    return make_system_kerr(Nfock, params_dict)
 
+def make_system_kerr(Nfock, params_dict):
     Regime = "kerr_bistable"
 
     # Define Kerr parameters
@@ -131,7 +94,12 @@ def make_system_kerr_qubit(Nfock):
     kappa_1, kappa_2 = symbols("kappa_1, kappa_2", real=True, positive=True)
     alpha0 = symbols("alpha_0")
 
-    params = {alpha0 : 10.0, chi : -100, Delta : 0., kappa_1 : 0.5, kappa_2 : 0}
+    params = {alpha0: params_dict["alpha0"],
+              chi: params_dict["chi"],
+              Delta: params_dict["Delta"],
+              kappa_1: params_dict["kappa_1"],
+              kappa_2: params_dict["kappa_2"],
+              }
 
     # Construct Kerr SLH
     a_k = Destroy("k")
@@ -163,6 +131,7 @@ def make_system_kerr_qubit(Nfock):
     Ls = [Lq.data for Lq in Lqs]
     obsq_data = [ob.data for ob in obsq]
     return H, psi0, Ls, obsq_data, obs
+
 
 
 # def make_system_kerr_qubit_two_systems(Nfock):
@@ -222,7 +191,7 @@ def make_system_kerr_qubit(Nfock):
 #     H_no_drive = H_no_drive_num.data
 #     Ls_no_drive = [L.data for L in L_no_drive_num]
 #
-# 
+#
 #
 #     return H, psi0, Ls, obsq_data_kron, obs
 #
