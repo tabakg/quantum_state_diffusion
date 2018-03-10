@@ -246,7 +246,7 @@ def qsd_solve(H,
         seeds = seed
     elif type(seed) is int or seed is None:
         np.random.seed(seed)
-        seeds = [np.random.randint(1000000) for _ in range(ntraj)]
+        seeds = [np.random.randint(4294967295) for _ in range(ntraj)]
     else:
         raise ValueError("Unknown seed type.")
 
@@ -265,16 +265,22 @@ def qsd_solve(H,
         h = (tspan[N-1] - tspan[0])/(N - 1)
         np.random.seed(s)
         dW = np.random.normal(0.0, np.sqrt(h), (N, m)) / np.sqrt(2.)
+
+        ## if implicit_type is not given, just make it None
         if implicit_type is None:
             out = sdeint_method(*args, dW=dW, normalized=normalize_state,
                 downsample=downsample)
-        try:
-            out = sdeint_method(*args, dW=dW, normalized=normalize_state,
-                implicit_type=implicit_type, downsample=downsample)
-        except TypeError:
-            print ("Not an implicit method. implicit_type argument ignored.")
-            out = sdeint_method(*args, dW=dW, normalized=normalize_state,
-                downsample=downsample)
+        else:
+            ## if implicit_type is given, try inputing it into the method.
+            try:
+                out = sdeint_method(*args, dW=dW, normalized=normalize_state,
+                    implicit_type=implicit_type, downsample=downsample)
+
+            ## if the method does not accept the implicit_type, warn the user and proceed without implicit_type.
+            except TypeError:
+                print ("Not an implicit method. implicit_type argument ignored.")
+                out = sdeint_method(*args, dW=dW, normalized=normalize_state,
+                    downsample=downsample)
         return out
 
     ## simulation parameters
@@ -671,7 +677,7 @@ def qsd_solve_two_systems(H1,
         seeds = seed
     elif type(seed) is int or seed is None:
         np.random.seed(seed)
-        seeds = [np.random.randint(1000000) for _ in range(ntraj)]
+        seeds = [np.random.randint(4294967295) for _ in range(ntraj)]
     else:
         raise ValueError("Unknown seed type.")
 
@@ -703,14 +709,15 @@ def qsd_solve_two_systems(H1,
             out = sdeint_method(*args, dW=dW_with_conj,
                 normalized=normalize_state, downsample=downsample)
             return out
-        try:
-            out = sdeint_method(*args, dW=dW_with_conj,
-                normalized=normalize_state, downsample=downsample,
-                implicit_type=implicit_type)
-        except TypeError:
-            print ("Not an implicit method. implicit_type argument ignored.")
-            out = sdeint_method(*args, dW=dW_with_conj,
-                normalized=normalize_state, downsample=downsample)
+        else:
+            try:
+                out = sdeint_method(*args, dW=dW_with_conj,
+                    normalized=normalize_state, downsample=downsample,
+                    implicit_type=implicit_type)
+            except TypeError:
+                print ("Not an implicit method. implicit_type argument ignored.")
+                out = sdeint_method(*args, dW=dW_with_conj,
+                    normalized=normalize_state, downsample=downsample)
         return out
 
 
