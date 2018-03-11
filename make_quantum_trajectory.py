@@ -85,7 +85,7 @@ def get_parser():
     parser.add_argument("--duration",
                         dest='duration',
                         help="Duration (iterations = duration / divided by delta_t)",
-                        type=int,
+                        type=float,
                         default=10)
 
     # Delta T
@@ -177,6 +177,13 @@ def get_parser():
                         type=float,
                         default=1.)
 
+    # drive_second_system
+    parser.add_argument("--drive_second_system",
+                        dest='drive_second_system',
+                        help="Whether the second system is independently driven.",
+                        type=bool,
+                        default=False)
+
     ################################################################################
     # Output Variables
     ################################################################################
@@ -230,6 +237,8 @@ def main():
     downsample = params['downsample'] = args.downsample
     Regime = params['regime'] = args.regime
     num_systems = params['num_systems'] = args.num_systems
+    drive_second_system = params['drive_second_system'] = args.drive_second_system
+
     if args.sdeint_method_name == "":
         logging.info("sdeint_method_name not set. Using itoEuler as a default.")
         sdeint_method_name = params['sdeint_method_name'] = "itoEuler"
@@ -264,7 +273,7 @@ def main():
     except:
         os.mkdir(traj_folder)
 
-    param_str = ("%s-"*13)[:-1] %(seed,
+    param_str = ("%s-"*14)[:-1] %(seed,
                                 ntraj,
                                 delta_t,
                                 Nfock_a,
@@ -276,7 +285,8 @@ def main():
                                 R,
                                 eps,
                                 noise_amp,
-                                trans_phase)
+                                trans_phase,
+                                drive_second_system)
     file_name = '%s/QSD_%s_%s' %(traj_folder,Regime,param_str)
 
     # Saving options
@@ -336,13 +346,13 @@ def main():
 
         if Regime == "absorptive_bistable":
             logging.info("Regime is set to %s", Regime)
-            H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_JC_two_systems(Nfock_a, Nfock_j)
+            H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_JC_two_systems(Nfock_a, Nfock_j, drive_second_system)
         elif Regime == "kerr_bistable":
             logging.info("Regime is set to %s", Regime)
-            H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_kerr_bistable_two_systems(Nfock_a)
+            H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_kerr_bistable_two_systems(Nfock_a, drive_second_system)
         elif Regime == "kerr_qubit":
             logging.info("Regime is set to %s", Regime)
-            H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_kerr_qubit_two_systems(Nfock_a)
+            H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_kerr_qubit_two_systems(Nfock_a, drive_second_system)
         else:
             logging.error("Unknown regime, %s, or not implemented yet.", Regime)
             raise ValueError("Unknown regime, or not implemented yet.")

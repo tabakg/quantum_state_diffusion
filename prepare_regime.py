@@ -157,13 +157,13 @@ def make_system_kerr(Nfock, params_dict):
 ################################################################################
 
 
-def make_system_kerr_bistable_two_systems(Nfock):
+def make_system_kerr_bistable_two_systems(Nfock, drive_second_system=False):
     params_dict = {"alpha0" : 21.75, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
-    return make_system_kerr_two_systems(Nfock, params_dict)
+    return make_system_kerr_two_systems(Nfock, params_dict, drive_second_system=drive_second_system)
 
-def make_system_kerr_qubit_two_systems(Nfock):
+def make_system_kerr_qubit_two_systems(Nfock, drive_second_system=False):
     params_dict = {"alpha0" : 10.0, "chi" : -100, "Delta" : 0., "kappa_1" : 0.5, "kappa_2" : 0}
-    return make_system_kerr_two_systems(Nfock, params_dict)
+    return make_system_kerr_two_systems(Nfock, params_dict, drive_second_system=drive_second_system)
 
 
 def make_system_kerr_two_systems(Nfock, params_dict, drive_second_system=False, S_mult=-1.):
@@ -202,7 +202,7 @@ def make_system_kerr_two_systems(Nfock, params_dict, drive_second_system=False, 
 
     ## Make the second H_num and L_num. It may or may not be driven.
     if drive_second_system:
-        H2, Ls2 = H_num, L_num
+        H2, L2s = H_num, L_num
     else:
         # H_num and L_num for non-driven system
         SYS_no_drive = KERR.toSLH()
