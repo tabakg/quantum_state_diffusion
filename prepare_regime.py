@@ -221,6 +221,9 @@ def make_system_kerr_two_systems(Nfock, params_dict, drive_second_system=False, 
     obsq_data_kron = ([sparse.csr_matrix(np.kron(ob.data.todense(), I)) for ob in obsq]
      + [sparse.csr_matrix(np.kron(I, ob.data.todense())) for ob in obsq])
 
+    obs_two_systems = np.concatenate([[a_k.dag()*a_k, a_k+a_k.dag(), (a_k-a_k.dag())/1j]
+        for a_k in [Destroy('1'), Destroy('2')]])
+
     psi0 = sparse.csr_matrix(([1] + [0]*(Nfock**2-1)),dtype=np.complex128).T
 
-    return H1.data, H2.data, psi0, [L.data for L in L1s], [L.data for L in L2s], obsq_data_kron, obs
+    return H1.data, H2.data, psi0, [L.data for L in L1s], [L.data for L in L2s], obsq_data_kron, obs_two_systems

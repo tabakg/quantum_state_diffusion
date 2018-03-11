@@ -341,7 +341,7 @@ def individual_term(H, Ls, ls, Lpsis, psi):
         term in SDE for individual component
     """
     return (-1j * H.dot(psi)
-            - sum([0.5 * (L.H.dot(Lpsi) + np.conj(l)*l*psi) - np.conj(l)*(Lpsi)
+            - sum([0.5 * (L.H.dot(Lpsi)) - np.conj(l)*(Lpsi)
                    for L, l, Lpsi in zip(Ls, ls, Lpsis)]))
 
 def classical_trans(L2, l1, l2, L2psi, psi):
@@ -366,8 +366,7 @@ def classical_trans(L2, l1, l2, L2psi, psi):
         term in SDE for classical transmission
 
     """
-    return (-L2.H.dot(psi)*l1 + L2psi*np.conj(l1)
-            + 0.5 * (l1*np.conj(l2) - np.conj(l1)*l2)*psi)
+    return (-L2.H.dot(psi)*l1 + L2psi*np.conj(l1))
 
 def quantum_trans(L2, l1, l2, L1psi, L2psi, psi):
     """classical transmission term for SDE.
@@ -393,8 +392,7 @@ def quantum_trans(L2, l1, l2, L1psi, L2psi, psi):
         term in SDE for coherent transmission
 
     """
-    return (-L2.H.dot(L1psi) + L2psi*np.conj(l1) + L1psi*np.conj(l2)
-            - 0.5*(l1*np.conj(l2) + np.conj(l1)*l2)*psi)
+    return (-L2.H.dot(L1psi) + L2psi*np.conj(l1) + L1psi*np.conj(l2))
 
 def dim_check(H, Ls):
     """Make sure the dimensions match.
