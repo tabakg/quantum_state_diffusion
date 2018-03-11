@@ -3,3 +3,4 @@ numpy
 QNET
 qutip
 sympy
+scipy

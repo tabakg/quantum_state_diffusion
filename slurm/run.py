@@ -23,9 +23,9 @@ for new_dir in [output_dir,job_dir,out_dir]:
         os.mkdir(new_dir)
 
 # We are going to vary the seed argument, and generate and submit a job for each
-seeds = range(1,1000)
+seeds = range(1,10)
 
-for seed in seeds: 
+for seed in seeds:
     print "Processing seed %s" %(seed)
     # Write job to file
     filey = ".job/qsd_%s.job" %(seed)
