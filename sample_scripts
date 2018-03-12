@@ -1,0 +1,136 @@
+# Some examples for using make_quantum_trajectory
+
+## Single systems
+
+### various regimes with default parameters. Save to pickle.
+
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl
+python make_quantum_trajectory.py --regime "absorptive_bistable" --save2pkl
+python make_quantum_trajectory.py --regime "kerr_qubit" --save2pkl
+
+
+## pure coherent transmission between two systems.
+## One choice is eps = (1-np.sqrt(1-R**2))/R
+
+## I want to run Euler and implicit Euler on the coherent systems for comparison
+
+## Euler
+## coherent, not driving second system
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-1 --downsample 10 &
+## coherent, driving second system
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-1 --downsample 10 --drive_second_system True &
+
+## itoImplicitEuler
+## coherent, not driving second system
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-1 --downsample 10 --sdeint_method_name "itoImplicitEuler"
+## coherent, driving second system
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-1 --downsample 10 --drive_second_system True --sdeint_method_name "itoImplicitEuler"
+
+## itoSRI2 Should be the good integrator. We need to
+## (1) Compare itoSRI2 to the two Euler integrators for the coherent case.
+## (2) Compare itoSRI2 to the master equation.
+## (3) Run itoSRI2 for different values for R with e.g. eps = (1-np.sqrt(1-R**2))/R
+
+## itoSRI2
+## coherent, not driving second system
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-1 --downsample 10 --sdeint_method_name "itoSRI2"
+## coherent, driving second system
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-1 --downsample 10 --drive_second_system True
+## classical, not driving second system
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-1 --downsample 10 --R 1 --eps 1
+## classical, driving second system
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-1 --downsample 10 --R 1 --eps 1 --drive_second_system True
+
+## All possible input Parameters
+
+--seed
+--ntraj
+--duration
+--delta_t
+--downsample
+--sdeint_method_name
+--regime
+--num_systems
+--Nfock_a
+--Nfock_j
+--R
+--eps
+--noise_amp
+--trans_phase
+--quiet
+--output_dir
+--save2pkl
+--save2mat
+--drive_second_system
+
+
+##### Tests
+
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1e-3 --downsample 10 &
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 15. --downsample 1000 --drive_second_system True &
+python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1 --downsample 100 --sdeint_method_name "itoSRI2" &
+
+
+### Test parameters
+
+DELTA_T=1e-5
+DURATION=1e-3
+DOWNSAMPLE=10
+NUM_SEEDS=1
+
+##### Actual parameters
+
+DELTA_T=1e-5
+DURATION=30
+DOWNSAMPLE=1000
+NUM_SEEDS=8
+
+## coherent itoEuler, sys2 not driven
+for (( i=1; i<=$NUM_SEEDS; i++))
+	do
+    python make_quantum_trajectory.py --regime "kerr_bistable" --seed $i --save2pkl --num_systems 2 \
+     --delta_t $DELTA_T --duration $DURATION --downsample $DOWNSAMPLE --sdeint_method_name "itoEuler" &
+	done
+
+## coherent itoImplicitEuler, sys2 not driven
+for (( i=1; i<=$NUM_SEEDS; i++))
+	do
+    python make_quantum_trajectory.py --regime "kerr_bistable" --seed $i --save2pkl --num_systems 2 \
+     --delta_t $DELTA_T --duration $DURATION --downsample $DOWNSAMPLE --sdeint_method_name "itoImplicitEuler" &
+	done
+
+## coherent itoSRI2, sys2 not driven
+for (( i=1; i<=$NUM_SEEDS; i++))
+	do
+    python make_quantum_trajectory.py --regime "kerr_bistable" --seed $i --save2pkl --num_systems 2 \
+     --delta_t $DELTA_T --duration $DURATION --downsample $DOWNSAMPLE --sdeint_method_name "itoSRI2" &
+	done
+
+## coherent itoSRI2, sys2 YES driven
+for (( i=1; i<=$NUM_SEEDS; i++))
+	do
+    python make_quantum_trajectory.py --regime "kerr_bistable" --seed $i --save2pkl --num_systems 2 \
+     --delta_t $DELTA_T --duration $DURATION --downsample $DOWNSAMPLE --sdeint_method_name "itoSRI2" \
+     --drive_second_system True &
+	done
+
+##########
+
+### Three parameter regimes for classical transmission.
+
+R=0.6
+EPS=0.3333333
+
+R=0.8
+EPS=0.5
+
+R=1.0
+EPS=1.0
+
+## classical itoSRI2, sys2 not driven
+for (( i=1; i<=$NUM_SEEDS; i++))
+	do
+    python make_quantum_trajectory.py --regime "kerr_bistable" --seed $i --save2pkl --num_systems 2 \
+     --delta_t $DELTA_T --duration $DURATION --downsample $DOWNSAMPLE --sdeint_method_name "itoSRI2" \
+     --R $R --eps $EPS --noise_amp 1.
+	done
