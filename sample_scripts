@@ -70,6 +70,7 @@ python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_syst
 python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 15. --downsample 1000 --drive_second_system True &
 python make_quantum_trajectory.py --regime "kerr_bistable" --save2pkl --num_systems 2 --delta_t 1e-5 --duration 1 --downsample 100 --sdeint_method_name "itoSRI2" &
 
+## For singularity, replace python ....py with ./qsd..img
 
 ### Test parameters
 
