@@ -108,7 +108,7 @@ def load_trajectory(trajectory_folder):
 def save_diffusion_coordinates(output, diff_coords):
 
     pkl_file = open(output, 'wb')
-    pickle.dump(diff_coords,output,protocol=0)
+    pickle.dump(diff_coords,pkl_file,protocol=0)
     pkl_file.close()
 
     return traj_data
