@@ -7,6 +7,7 @@ import pickle
 import os
 import numpy as np
 
+OVERWRITE=False
 parent_dir, _ = os.path.split(os.getcwd())
 traj_folder = os.path.join(parent_dir,"trajectory_data")
 bools = [False] + [True]*12
@@ -36,6 +37,9 @@ file_lists = files_by_params(files, bools)
 
 for file_lst in file_lists:
     name = "N_plot_timeseries_" + "-".join([par for i,par in enumerate(get_file_params(file_lst[0])) if bools[i]]) + ".pdf"
+    plot_path = os.path.join(os.getcwd(), name)
+    if not OVERWRITE and os.path.exists(plot_path):
+        pass
     for file in file_lst:
         print ("File name: %s" % file)
         try:
@@ -54,6 +58,9 @@ for file_lst in file_lists:
 
 for file_lst in file_lists:
     name = "N_plot_scatter_" + "-".join([par for i,par in enumerate(get_file_params(file_lst[0])) if bools[i]]) + ".pdf"
+    plot_path = os.path.join(os.getcwd(), name)
+    if not OVERWRITE and os.path.exists(plot_path):
+        pass
     for file in file_lst:
         print ("File name: %s" % file)
         try:

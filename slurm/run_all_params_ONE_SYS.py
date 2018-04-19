@@ -25,22 +25,22 @@ for new_dir in [output_dir,job_dir,out_dir]:
 
 OVERWRITE=False
 
-NUM_SEEDS=8
+NUM_SEEDS=16 ## can afford more seeds
 REGIME='kerr_bistable'
 ntraj=1
 delta_t=1e-5
 Nfock_a=50
 Nfock_j=2
-duration=30.0 ## try running longer ones? say 100. Make sure appropriate amount is being cut off
+duration=100.0 ## can afford longer trajectories
 downsample=1000
-num_systems=2
-noise_amp=1.0 ## matters for two systems only
-trans_phase=1.0 ## matters for two systems only
+num_systems=1
+noise_amp=0.0 ## matters for two systems only
+trans_phase=0.0 ## matters for two systems only
 
 SEEDs=range(1, NUM_SEEDS + 1)
-Rs=0.,0.6,0.8,1.0 ## matters for two systems only
-EPSs=0.,0.3333333,0.5,1.0 ## matters for two systems only
-DRIVES=True,False ##Driving second system? ## matters for two systems only
+Rs=0.0 ## matters for two systems only
+EPSs=0.0 ## matters for two systems only
+DRIVES=False ##Driving second system? ## matters for two systems only
 
 METHODS={(R,EPS):['itoSRI2'] for R,EPS in zip(Rs,EPSs)}
 METHODS[(0.,0.)] += ['itoEuler','itoImplicitEuler']

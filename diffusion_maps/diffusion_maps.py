@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import sys
+import hashlib
 
 # Log everything to stdout
 logging.basicConfig(stream=sys.stdout,level=logging.DEBUG)
@@ -98,12 +99,10 @@ def FS_metric(u, v):
     return inner
 
 def load_trajectory(trajectory_folder):
-
     pkl_file = open(trajectory_folder, 'rb')
     pkl_dict = pickle.load(pkl_file)
     pkl_file.close()
-
-    return pkl_dict['psis']
+    return pkl_dict
 
 def save_diffusion_coordinates(output, diff_coords):
 
@@ -181,12 +180,23 @@ def main():
     except:
         os.mkdir(diffusion_maps_folder)
 
-    ## TODO: Right now saving with traj_name being one of the trajectories, should represent all...
-    _, traj_name = os.path.split(traj_list[0]) ## not necessary to use split if using file name and not path
-    output = '%s/diffusion_map_%s' %(diffusion_maps_folder, traj_name)
+    def make_hash():
+        """We make a name using a hash because there could be multiple
+        trajectories in traj_list feeding into a single set of diffusion maps"""
+        hash_code = hashlib.sha256(args.traj.encode('utf-8'))
+        return hash_code.hexdigest()
 
-    psis = np.concatenate([load_trajectory(os.path.join(trajectory_folder,traj))
-                                                for traj in traj_list])[0,:,:]
+    hash_code = make_hash()
+    output = '%s/diffusion_map_%s.pkl' %(diffusion_maps_folder, hash_code)
+
+    pkl_dict = {traj: load_trajectory(os.path.join(trajectory_folder,traj)) for traj in traj_list}
+
+    diffusion_coords_dict = {}
+    psis = np.concatenate(np.concatenate([pkl_dict[traj]['psis'] for traj in traj_list]))
+    diffusion_coords_dict['expects'] = np.concatenate(np.concatenate([pkl_dict[traj]['expects'] for traj in traj_list]))
+    diffusion_coords_dict['times'] = np.concatenate([pkl_dict[traj]['times'] for traj in traj_list])
+    diffusion_coords_dict['traj_list'] = traj_list
+
     if sample_size == 0:
         sampled_psis = psis
     else:
@@ -196,13 +206,16 @@ def main():
         else:
             sampled_psis = psis[::every_other_n]
 
-    distance_matrix = FS_metric(sampled_psis, sampled_psis)
+    psis_doubled = np.concatenate([psis.real.T,psis.imag.T]).T ## convert to (real, imag) format
+
+    distance_matrix = FS_metric(psis_doubled, psis_doubled)
     vals, vecs = run_diffusion_map_dense(distance_matrix,eps=eps,
                                         alpha=alpha,
                                         eig_lower_bound=eig_lower_bound,
                                         eig_upper_bound=eig_upper_bound)
     diffusion_coords = {"vals":vals, "vecs":vecs}
-    save_diffusion_coordinates(output, diffusion_coords)
+    diffusion_coords_dict.update(diffusion_coords)
+    save_diffusion_coordinates(output, diffusion_coords_dict)
 
 if __name__ == '__main__':
     main()
