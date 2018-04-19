@@ -9,9 +9,7 @@ import hashlib
 
 # Log everything to stdout
 logging.basicConfig(stream=sys.stdout,level=logging.DEBUG)
-
 trajectory_folder='/scratch/users/tabakg/qsd_output/trajectory_data'
-
 
 def get_parser():
     '''get_parser returns the arg parse object, for use by an external application (and this script)
@@ -67,7 +65,6 @@ def get_parser():
                         help="Turn off logging (debug and info)",
                         default=False)
 
-    # Does the user want to quiet output?
     parser.add_argument("--output_dir",
                         dest='outdir',
                         type=str,
@@ -145,10 +142,7 @@ def run_diffusion_map_dense(distance_matrix,eps = 0.5, alpha = 0.5, eig_lower_bo
 
 def main():
     parser = get_parser()
-    # try:
     args = parser.parse_args()
-    # except:
-    #     sys.exit(0)
 
     # Set up commands from parser
     params = dict()

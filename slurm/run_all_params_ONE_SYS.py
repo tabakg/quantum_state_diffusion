@@ -1,7 +1,7 @@
 #!/usr/bin/python env
 
 '''
-Quantum State Diffusion: Submit jobs on SLURM
+Diffusion Maps: Submit jobs on SLURM
 
 '''
 
@@ -42,8 +42,7 @@ Rs=0.0 ## matters for two systems only
 EPSs=0.0 ## matters for two systems only
 DRIVES=False ##Driving second system? ## matters for two systems only
 
-METHODS={(R,EPS):['itoSRI2'] for R,EPS in zip(Rs,EPSs)}
-METHODS[(0.,0.)] += ['itoEuler','itoImplicitEuler']
+METHODS={(R,EPS):['itoSRI2','itoEuler','itoImplicitEuler'] for R,EPS in zip(Rs,EPSs)}
 
 for seed in SEEDs:
   for R, EPS in zip(Rs, EPSs):
