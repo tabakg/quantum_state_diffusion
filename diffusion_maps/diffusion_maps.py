@@ -9,7 +9,6 @@ import hashlib
 
 # Log everything to stdout
 logging.basicConfig(stream=sys.stdout,level=logging.DEBUG)
-trajectory_folder='/scratch/users/tabakg/qsd_output/trajectory_data'
 
 def get_parser():
     '''get_parser returns the arg parse object, for use by an external application (and this script)
@@ -24,7 +23,8 @@ def get_parser():
 
     parser.add_argument("--traj",
                         dest='traj',
-                        help="complete path to trajectory file, or a list of trajectory files separated by commas.",
+                        help="complete path to trajectory file, or a list of "
+                             "complete paths to trajectory files separated by commas.",
                         type=str,
                         default=None)
 
@@ -95,8 +95,8 @@ def FS_metric(u, v):
     converter(inner, inner_to_FS)
     return inner
 
-def load_trajectory(trajectory_folder):
-    pkl_file = open(trajectory_folder, 'rb')
+def load_trajectory(traj):
+    pkl_file = open(traj, 'rb')
     pkl_dict = pickle.load(pkl_file)
     pkl_file.close()
     return pkl_dict
@@ -183,7 +183,7 @@ def main():
     hash_code = make_hash()
     output = '%s/diffusion_map_%s.pkl' %(diffusion_maps_folder, hash_code)
 
-    pkl_dict = {traj: load_trajectory(os.path.join(trajectory_folder,traj)) for traj in traj_list}
+    pkl_dict = {traj: load_trajectory(traj) for traj in traj_list}
 
     diffusion_coords_dict = {}
     psis = np.concatenate(np.concatenate([pkl_dict[traj]['psis'] for traj in traj_list]))

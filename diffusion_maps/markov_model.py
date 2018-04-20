@@ -8,11 +8,11 @@ import numpy as np
 from numpy import linalg as la
 import random
 from scipy.stats import rankdata
+from scipy.stats import gaussian_kde
 from sklearn.neighbors import kneighbors_graph
 from hmmlearn import hmm
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
-from scipy.stats import gaussian_kde
 from bisect import bisect_left
 plt.style.use("ggplot")
 
