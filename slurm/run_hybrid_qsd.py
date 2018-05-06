@@ -1,13 +1,14 @@
 #!/usr/bin/python env
 
 '''
-Run Markov model: Submit jobs on SLURM
+Run the hybrid_qsd.py code using recoded Markov models for system 1
+and input parameters for system 2.
 '''
 
 import os
 
-diffusion_maps_folder='/scratch/users/tabakg/qsd_output/diffusion_maps/diffusion_maps_data'
-output_dir='/scratch/users/tabakg/qsd_output/markov_model_data'
+markov_model_folder='/scratch/users/tabakg/qsd_output/markov_model_data'
+output_dir='/scratch/users/tabakg/qsd_output/hybrid_trajectory_data'
 
 # Variables for each job
 memory = 16000
@@ -22,14 +23,15 @@ for new_dir in [output_dir,job_dir,out_dir]:
 
 OVERWRITE=False
 
-files = [f for f in os.listdir(diffusion_maps_folder) if f[-3:] == 'pkl']
+files = [f for f in os.listdir(markov_model_folder) if f[-3:] == 'pkl']
 
-seed = 1 ## Used in generating the HMM, e.g. for the initial distributions
+# Seed for generating trajectory of system 1 and stochastic terms of system 2.
+seed = 101
 
-for diffusion_maps_file in files:
-    diffusion_maps_path = os.path.join(diffusion_maps_folder, diffusion_maps_file)
-    hash_name = diffusion_maps_file[len('diffusion_maps_')-1:][:-len('.pkl')]
-    name = 'markov_model_' + hash_name + ".pkl"
+for markov_model_file in files:
+    markov_model_path = os.path.join(markov_model_folder, markov_model_file)
+    hash_name = markov_model_file[len('markov_model_')-1:len('.pkl')]
+    name = 'hybrid_QSD_' + hash_name
     output_file_path = os.path.join(output_dir, name)
     file_exists = os.path.isfile(output_file_path)
 
@@ -37,9 +39,9 @@ for diffusion_maps_file in files:
     print("If overwriting or file does not exist, going to process new seed.")
 
     if OVERWRITE or not file_exists:
-        print ("Processing seed %s" %(seed))
+        print "Processing seed %s" %(seed)
         # Write job to file
-        filey = "%s/qsd_%s.job" %(job_dir, seed)
+        filey = "%s/hybrid_%s.job" %(job_dir, seed)
         filey = open(filey,"w")
         filey.writelines("#!/bin/bash\n")
         filey.writelines("#SBATCH --job-name=making_%s\n" %(output_file_path))
@@ -47,6 +49,6 @@ for diffusion_maps_file in files:
         filey.writelines("#SBATCH --error=%s/markov_model_seed%s.err\n" %(out_dir,seed))
         filey.writelines("#SBATCH --time=2-00:00\n")
         filey.writelines("#SBATCH --mem=%s\n" %(memory))
-        filey.writelines("python /scratch/users/tabakg/qsd_dev/markov_model.py --input_file_path '%s' --output_file_path '%s'" % (diffusion_maps_path, output_file_path))
+        filey.writelines("python /scratch/users/tabakg/qsd_dev/hybrid_qsd.py --input_file '%s' --output_dir '%s'" % (markov_model_path, output_dir))
         filey.close()
         os.system("sbatch -p %s %s/qsd_%s.job" %(partition,job_dir,seed))

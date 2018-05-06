@@ -45,7 +45,7 @@ def get_parser():
                         dest='method',
                         help="method for Markov model. Can be hmm or agg_clustering.",
                         type=str,
-                        default=15)
+                        default="hmm")
 
     parser.add_argument("--n_iter",
                         dest='n_iter',
@@ -72,16 +72,16 @@ def get_parser():
                         help="Turn off logging (debug and info)",
                         default=False)
 
-    parser.add_argument("--input_file",
-                        dest='input_file',
+    parser.add_argument("--input_file_path",
+                        dest='input_file_path',
                         type=str,
-                        help="Input file to use. Should be an output of diffusion_maps containing the proper pickled data",
+                        help="input file full path",
                         default=None)
 
-    parser.add_argument("--output_dir",
-                        dest='outdir',
+    parser.add_argument("--output_file_path",
+                        dest='output_file_path',
                         type=str,
-                        help="Output folder",
+                        help="Output file full path",
                         default=None)
     return parser
 
@@ -112,7 +112,7 @@ def next_state(state,T_cum):
     r = np.random.uniform()
     return bisect_left(np.asarray(T_cum)[state], r)
 
-def run_markov_chain(start_cluster, T, steps = 10000):
+def run_markov_chain(start_cluster, T, steps = 10000, slow_down=1):
     '''
     Run Markov chain for a single trajectory.
     '''
@@ -138,7 +138,8 @@ def run_markov_chain(start_cluster, T, steps = 10000):
     current = start_cluster
     outs = []
     for i in range(steps):
-        outs.append(current)
+        for re in range(slow_down):
+            outs.append(current)
         current = next_state(current,T_cum)
     return np.asarray(outs)
 
@@ -169,7 +170,7 @@ def get_hmm_hidden_states(X,
     if Ntraj is None:
         Ntraj = 1
     assert X.shape[0] % Ntraj == 0
-    lengths = [X.shape[0] / Ntraj] * Ntraj
+    lengths = [X.shape[0] // Ntraj] * Ntraj
     hmm_model = hmm.GaussianHMM(n_components=n_clusters,
                                 covariance_type=covariance_type,
                                 n_iter = n_iter,
@@ -212,8 +213,9 @@ def get_obs_generated(obs_indices,
                       steps = 10000,
                       n_clusters = 10,
                       start_cluster = 0, ## index of starting cluster
+                      slow_down=1,
                       return_state_indices_only = False):
-    steps = run_markov_chain(start_cluster,T_matrix, steps = steps)
+    steps = run_markov_chain(start_cluster,T_matrix, steps = steps, slow_down = slow_down)
     if return_state_indices_only:
         return steps
     obs_generated = np.asarray([[expect_in_clusters[l][cluster] for cluster in steps ] for l in obs_indices])
@@ -369,19 +371,22 @@ class dim_red:
         plt.show()
 
 class markov_model_builder:
-    def __init__(self, dim_red, name = None):
-        try:
-            self.X = dim_red.X
-        except:
-            print('Warning: did not find reduced coordinates X in dim_red')
-        self.Ntraj = dim_red.Ntraj
-        self.expects_sampled = dim_red.expects_sampled
-        self.obs_indices = dim_red.obs_indices
-        if name is None:
-            self.name = dim_red.name + "_markov_builder"
+    def __init__(self, dim_red=None, name=None):
+        if dim_red is not None:
+            try:
+                self.X = dim_red.X
+            except:
+                print('Warning: did not find reduced coordinates X in dim_red')
+            self.Ntraj = dim_red.Ntraj
+            self.expects_sampled = dim_red.expects_sampled
+            self.obs_indices = dim_red.obs_indices
+            if name is None:
+                self.name = dim_red.name + "_markov_builder"
+            else:
+                self.name = name
+            self.status = 'not attempted'
         else:
-            self.name = name
-        self.status = 'not attempted'
+            print("Warning, dim_red initialized to None.")
 
     def load(self, file_path):
         f = open(file_path, 'rb')
@@ -477,7 +482,13 @@ class markov_model_builder:
         assert self.status == 'model built'
         ellipses_plot(self.X_to_use,indices,self.hmm_model,self.n_clusters)
 
-    def generate_obs_traj(self, steps = 10000, random_state = 1, start_cluster=0, return_state_indices_only=False, obs_indices=None):
+    def generate_obs_traj(self,
+                          steps=10000,
+                          random_state=1,
+                          start_cluster=0,
+                          slow_down=1,
+                          return_state_indices_only=False,
+                          obs_indices=None):
         assert self.status == 'model built'
         if obs_indices is None:
             obs_indices = self.obs_indices
@@ -488,6 +499,7 @@ class markov_model_builder:
                                 steps = steps,
                                 n_clusters = self.n_clusters,
                                 start_cluster = start_cluster, ## index of starting cluster
+                                slow_down=slow_down,
                                 return_state_indices_only = return_state_indices_only)
 
 if __name__ == "__main__":
@@ -495,22 +507,17 @@ if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
 
-    input_file = params['input_file'] = args.input_file ## input file full path
-    output_dir = params['output_dir'] = args.output_dir
-    seed = params['seed'] = args.seed
+    output_file_path = args.output_file_path
+    input_file_path = args.input_file_path
+    seed = args.seed
 
-    n_clusters = params['n_clusters'] = args.n_clusters
-    method = params['method'] = args.method
-    n_iter = params['n_iter'] = args.n_iter
-    covariance_type = params['covariance_type'] = args.covariance_type
-    tol = params['tol'] = args.tol
+    n_clusters = args.n_clusters
+    method = args.method
+    n_iter = args.n_iter
+    covariance_type = args.covariance_type
+    tol = args.tol
 
-    _, file_name = os.path.split(input_file) ## input file name only
-    hash_name = file_name.lstrip('diffusion_maps_').rstrip('.pkl')
-    name = 'markov_model_' + hash_name
-    output_file_path = os.path.join(output_dir, name)
-
-    pkl_file = open(input_file, 'rb')
+    pkl_file = open(input_file_path, 'rb')
     data1 = pickle.load(pkl_file)
 
     Ntraj = len(data1['traj_list'])
@@ -522,9 +529,10 @@ if __name__ == "__main__":
     vals_tmp, vecs_tmp = data1['vals'][1:], data1['vecs'][:,1:]
     vals, vecs = sorted_eigs(vals_tmp, vecs_tmp)
 
-    dim_red_obj = dim_red(vecs, Ntraj, expects_sampled, obs_indices, name)
+    name = input_file_path
+    dim_red_obj = dim_red(vecs, Ntraj, expects_sampled, name)
 
-    mod = markov_model_builder(dim_red)
+    mod = markov_model_builder(dim_red_obj)
 
     mod.build_model(n_clusters=n_clusters,
                     method=method,

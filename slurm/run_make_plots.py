@@ -34,6 +34,6 @@ filey.writelines("#SBATCH --error=%s/plots.err\n" %(out_dir))
 filey.writelines("#SBATCH --time=2-00:00\n")
 filey.writelines("#SBATCH --mem=%s\n" %(memory))
 
-filey.writelines("python make_plots.py")
+filey.writelines("python /scratch/users/tabakg/qsd_dev/make_plots.py")
 filey.close()
 os.system("sbatch -p %s .job/plots.job" %(partition))

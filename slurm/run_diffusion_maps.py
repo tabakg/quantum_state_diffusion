@@ -58,6 +58,6 @@ for file_list in file_lists:
     filey.writelines("#SBATCH --time=2-00:00\n")
     filey.writelines("#SBATCH --mem=%s\n" %(memory))
 
-    filey.writelines("python diffusion_maps.py --traj '%s'" % (",".join(file_list)))
+    filey.writelines("python /scratch/users/tabakg/qsd_dev/diffusion_maps.py --traj '%s'" % (",".join(file_list)))
     filey.close()
     os.system("sbatch -p %s .job/diff_map.job" %(partition))

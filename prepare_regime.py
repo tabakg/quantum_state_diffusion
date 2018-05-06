@@ -40,6 +40,7 @@ def make_nparams_JC(W,k,g,g0,DD,TT,Cn=10.5,
     return nparams
 
 def make_system_JC(Nfock_a, Nfock_j):
+    ## TODO!! when drive is not present...
 
     ## Make Operators
     a = Destroy(1)
@@ -89,12 +90,18 @@ def make_system_JC(Nfock_a, Nfock_j):
 ######## Kerr System
 ################################################################################
 
-def make_system_kerr_bistable(Nfock):
-    params_dict = {"alpha0" : 21.75, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
+def make_system_kerr_bistable(Nfock, drive=True):
+    if drive:
+        params_dict = {"alpha0" : 21.75, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : 0.0, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
     return make_system_kerr(Nfock, params_dict)
 
-def make_system_kerr_qubit(Nfock):
-    params_dict = {"alpha0" : 10.0, "chi" : -100, "Delta" : 0., "kappa_1" : 0.5, "kappa_2" : 0}
+def make_system_kerr_qubit(Nfock, drive=True):
+    if drive:
+        params_dict = {"alpha0" : 10.0, "chi" : -100, "Delta" : 0., "kappa_1" : 0.5, "kappa_2" : 0}
+    else:
+        params_dict = {"alpha0" : 0.0, "chi" : -100, "Delta" : 0., "kappa_1" : 0.5, "kappa_2" : 0}
     return make_system_kerr(Nfock, params_dict)
 
 def make_system_kerr(Nfock, params_dict):

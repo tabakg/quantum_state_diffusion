@@ -1,7 +1,7 @@
 from scipy.io import savemat
 import pickle
 import logging
-
+import os
 
 def print_params(params):
     '''print params will print a dictioary of parameters to the screen for the user
@@ -77,3 +77,34 @@ def prepare_save(data, file_name, obs, params=None):
         mdict.update(params) ## other paramters (optional)
 
     return mdict
+
+def get_params(traj):
+    params={}
+    things = traj.split('-')
+    first = os.path.split(things[0])[1].split('_')
+    params['seed'] = int(first[-1])
+    params['regime'] = str('_'.join(first[1:-1]))
+    params['ntraj'] = int(things[1])
+    try:
+        (delta_t1,delta_t2,Nfock_a,Nfock_j,
+            duration,downsample,method,num_systems,
+            R,EPS,noise_amp,trans_phase,drive) = things[2:]
+        params['delta_t'] = float("".join([delta_t1,'-',delta_t2]))
+    except:
+        (delta_t,Nfock_a,Nfock_j,
+            duration,downsample,method,num_systems,
+            R,EPS,noise_amp,trans_phase,drive) = things[2:]
+        params['delta_t'] = float(delta_t)
+
+    params['Nfock_a'] = int(Nfock_a)
+    params['Nfock_j'] = int(Nfock_j)
+    params['duration'] = float(duration)
+    params['downsample'] = int(downsample)
+    params['method'] = str(method)
+    params['num_systems'] = int(num_systems)
+    params['R'] = float(R)
+    params['EPS'] =float(EPS)
+    params['noise_amp'] =float(noise_amp)
+    params['trans_phase'] =float(trans_phase)
+    params['drive'] = bool(drive)
+    return params

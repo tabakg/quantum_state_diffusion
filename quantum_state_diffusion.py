@@ -5,7 +5,7 @@ Author: Gil Tabak
 Date: Nov 3, 2016
 
 This script uses the library sdeint to perform quantum state diffusion trajectories.
-The inputs are purposely similar to qubit functions like mcsolve to make
+The inputs are purposely similar to qutip functions like mcsolve to make
 integration easier later.
 
 '''
