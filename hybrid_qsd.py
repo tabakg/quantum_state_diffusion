@@ -11,15 +11,25 @@ import sdeint
 from scipy import sparse
 from time import time
 
-diffusion_maps = '/Users/gil/Desktop/test/diffusion_map'
-markov_models = '/Users/gil/Desktop/test/markov_models'
-qsd_dev = '/Users/gil/Google Drive/repos/quantum_state_diffusion'
+## Gil's local machine
+# diffusion_maps = '/Users/gil/Desktop/test/diffusion_map'
+# markov_models = '/Users/gil/Desktop/test/markov_models'
+# qsd_dev = '/Users/gil/Google Drive/repos/quantum_state_diffusion'
+
+## Slurm
+diffusion_maps = '/scratch/users/tabakg/qsd_output/diffusion_maps/diffusion_maps_data'
+markov_models = '/scratch/users/tabakg/qsd_output/markov_model_data'
+qsd_dev = '/scratch/users/tabakg/qsd_dev'
 
 sys.path.append(qsd_dev)
 sys.path.append(markov_models)
 sys.path.append(diffusion_maps)
 
-from utils import get_params
+from utils import (
+    get_params,
+    save2pkl,
+    save2mat,
+)
 import markov_model
 
 from prepare_regime import (
@@ -197,24 +207,24 @@ def get_parser():
                         help="diffusion map file.",
                         default=None)
 
-    parser.add_argument("--output_dir",
-                        dest='outdir',
+    parser.add_argument("--output_file_path",
+                        dest='output_file_path',
                         type=str,
-                        help="Output folder",
+                        help="Output file path",
                         default=None)
 
     # Save to pickle?
     parser.add_argument("--save2pkl",
                         dest='save2pkl',
                         action="store_true",
-                        help="Save pickle file to --output_dir",
+                        help="Save pickle file",
                         default=False)
 
     # Save to mat?
     parser.add_argument("--save2mat",
                         dest='save2mat',
                         action="store_true",
-                        help="Save .mat file to --output_dir",
+                        help="Save .mat file",
                         default=False)
     return parser
 
@@ -516,34 +526,35 @@ if __name__ == "__main__":
 
     parser = get_parser()
     args = parser.parse_args()
+    params = {}
 
-    markov_file = args.markov_file ## input file full path
-    diffusion_file = args.diffusion_file ## input file full path
-    output_dir = args.output_dir
-    slow_down = args.slow_down
-    ntraj = args.ntraj
-    seed = args.seed
-    duration = args.duration
-    delta_t = args.deltat
-    Nfock_a = args.nfocka
-    Nfock_j = args.nfockj
-    downsample = args.downsample
-    Regime = args.regime
-    drive_second_system = args.drive_second_system
+    markov_file = params['markov_file'] =args.markov_file ## input file full path
+    diffusion_file = params['diffusion_file'] = args.diffusion_file ## input file full path
+    output_file_path = args.output_file_path
+    slow_down = params['slow_down'] = args.slow_down
+    ntraj = params['ntraj'] = args.ntraj
+    seed = params['seed'] =  args.seed
+    duration = params['duration'] = args.duration
+    delta_t = params['delta_t'] = args.deltat
+    Nfock_a = params['Nfock_a'] = args.nfocka
+    Nfock_j = params['Nfock_j'] = args.nfockj
+    downsample = params['downsample'] = args.downsample
+    Regime = params['Regime'] = args.regime
+    drive_second_system = params['drive_second_system'] = args.drive_second_system
 
     if args.sdeint_method_name == "":
         logging.info("sdeint_method_name not set. Using itoEuler as a default.")
-        sdeint_method_name = "itoEuler"
+        sdeint_method_name = params['sdeint_method_name'] = "itoEuler"
     else:
-        sdeint_method_name = args.sdeint_method_name
+        sdeint_method_name = params['sdeint_method_name'] = args.sdeint_method_name
 
-    R = args.R
-    eps = args.eps
-    noise_amp = args.noise_amp
-    trans_phase = args.trans_phase
+    R = params['R'] = args.R
+    eps = params['eps'] = args.eps
+    noise_amp = params['noise_amp'] = args.noise_amp
+    trans_phase = params['trans_phase'] = args.trans_phase
 
     if slow_down is None:
-        slow_down = downsample
+        slow_down = params['slow_down'] = downsample
     mod = markov_model.markov_model_builder()
     mod.load(markov_file)
     reduced_traj_len = math.ceil(duration/(delta_t*slow_down))
@@ -551,17 +562,17 @@ if __name__ == "__main__":
     pkl_file = open(diffusion_file, 'rb')
     data1 = pickle.load(pkl_file)
     traj_list = data1['traj_list']
-    sys1_params = get_params(traj_list[0])
+    sys1_params = params['sys1_params'] = get_params(traj_list[0])
     sys1_regime = sys1_params['regime']
     sys1_Nfock_a = sys1_params['Nfock_a']
     sys1_Nfock_j = sys1_params['Nfock_j']
 
     if Regime is None:
-        Regime = sys1_regime
+        Regime = params['Regime'] = sys1_regime
     if Nfock_a is None:
-        Nfock_a = sys1_Nfock_a
+        Nfock_a = params['Nfock_a'] = sys1_Nfock_a
     if Nfock_j is None:
-        Nfock_j = sys1_Nfock_j
+        Nfock_j = params['Nfock_j'] = sys1_Nfock_j
 
     if Regime == 'kerr_bistable':
         l1s_reduced = obs_to_ls_kerr_bistable(obs)
@@ -629,14 +640,12 @@ if __name__ == "__main__":
     if save_mat:
         logging.info("Saving mat file...")
         save2mat(data=D,
-                 file_name=os.path.join(output_dir, hash),
+                 file_name=output_file_path,
                  obs=obs_names,
                  params=params)
     if save_pkl:
         logging.info("Saving pickle file...")
         save2pkl(data=D,
-                 file_name=os.path.join(output_dir, hash),
+                 file_name=output_file_path,
                  obs=obs_names,
                  params=params)
-
-## TODO: params, hash name, add stuff to run_hybrid_qsd
