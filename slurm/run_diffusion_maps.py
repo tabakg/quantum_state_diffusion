@@ -49,8 +49,8 @@ file_lists = files_by_params(files, bools)
 
 for file_list in file_lists:
 
-    filey = ".job/diff_map.job"
-    filey = open(filey,"w")
+    filey_loc = os.path.join(job_dir, "diff_map.job")
+    filey = open(filey_loc,"w")
     filey.writelines("#!/bin/bash\n")
     filey.writelines("#SBATCH --job-name=diff_map\n")
     filey.writelines("#SBATCH --output=%s/diff_map.out\n" %(out_dir))
@@ -60,4 +60,4 @@ for file_list in file_lists:
 
     filey.writelines("python /scratch/users/tabakg/qsd_dev/diffusion_maps.py --traj '%s'" % (",".join(file_list)))
     filey.close()
-    os.system("sbatch -p %s .job/diff_map.job" %(partition))
+    os.system("sbatch -p %s %s" %(partition, filey_loc))

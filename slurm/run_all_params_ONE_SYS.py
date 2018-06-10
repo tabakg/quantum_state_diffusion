@@ -10,8 +10,7 @@ import os
 # Variables to run jobs
 ## basedir = os.path.abspath(os.getcwd())
 dev_dir='/scratch/users/tabakg/qsd_dev'
-output_dir='/scratch/users/tabakg/qsd_output'
-traj_folder='/scratch/users/tabakg/qsd_output/trajectory_data'
+output_dir='/scratch/users/tabakg/qsd_output/trajectory_data'
 
 # Variables for each job
 memory = 16000
@@ -62,7 +61,7 @@ for seed in SEEDs:
                                 trans_phase,
                                 drive)
     file_name = 'QSD_%s_%s.pkl' %(REGIME,param_str)
-    file_loc = os.path.join(traj_folder,file_name)
+    file_loc = os.path.join(out_dir,file_name)
     file_exists = os.path.isfile(file_loc)
 
     print("OVERWRITE is %s and file %s existence is %s" %(OVERWRITE,file_name,file_exists))
@@ -85,7 +84,10 @@ for seed in SEEDs:
                        "--seed %s --save2pkl --regime '%s' --num_systems 1 "
                        "--delta_t %s --duration %s --downsample %s --sdeint_method_name '%s' "
                        "--R %s --eps %s --noise_amp 1. --drive_second_system True"
-                       "\n" %(script_name, traj_folder,seed,REGIME,delta_t,duration,downsample,method,R,EPS))
+                       "\n" %(script_name, out_dir,seed,REGIME,delta_t,duration,downsample,method,R,EPS))
+
+      filey.close()
+      os.system("sbatch -p %s %s/qsd_%s.job" %(partition, job_dir, seed))
 
 
       # filey.writelines("module load singularity\n")
@@ -104,5 +106,3 @@ for seed in SEEDs:
       #                    "--delta_t %s --duration %s --downsample %s --sdeint_method_name '%s' "
       #                    "--R %s --eps %s --noise_amp 1."
       #                    "\n"%(output_dir,seed,REGIME,delta_t,duration,downsample,method,R,EPS))
-      filey.close()
-      os.system("sbatch -p %s %s/qsd_%s.job" %(partition, job_dir, seed))
