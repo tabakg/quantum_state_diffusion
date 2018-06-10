@@ -9,7 +9,7 @@ import os
 
 # Variables to run jobs
 ## basedir = os.path.abspath(os.getcwd())
-output_dir='/scratch/users/tabakg/qsd_output'
+output_dir='/scratch/users/tabakg/qsd_output/trajectory_data'
 
 # Variables for each job
 memory = 4000

@@ -88,6 +88,7 @@ def make_system_JC(Nfock_a, Nfock_j):
     return H, psi0, Ls, obsq_data, obs
 
 ######## Kerr System
+######## Bistable regimes based on the examples on pg. 6 in https://arxiv.org/pdf/1402.5983.pdf
 ################################################################################
 
 def make_system_kerr_bistable(Nfock, drive=True):
@@ -96,6 +97,14 @@ def make_system_kerr_bistable(Nfock, drive=True):
     else:
         params_dict = {"alpha0" : 0.0, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
     return make_system_kerr(Nfock, params_dict)
+
+def make_system_kerr_bistable_regime2(Nfock, drive=True):
+    if drive:
+        params_dict = {"alpha0" : 33.25, "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : 0., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    return make_system_kerr(Nfock, params_dict)
+
 
 def make_system_kerr_qubit(Nfock, drive=True):
     if drive:

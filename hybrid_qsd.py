@@ -542,12 +542,6 @@ if __name__ == "__main__":
     Regime = params['Regime'] = args.regime
     drive_second_system = params['drive_second_system'] = args.drive_second_system
 
-    if args.sdeint_method_name == "":
-        logging.info("sdeint_method_name not set. Using itoEuler as a default.")
-        sdeint_method_name = params['sdeint_method_name'] = "itoEuler"
-    else:
-        sdeint_method_name = params['sdeint_method_name'] = args.sdeint_method_name
-
     R = params['R'] = args.R
     eps = params['eps'] = args.eps
     noise_amp = params['noise_amp'] = args.noise_amp
@@ -562,7 +556,13 @@ if __name__ == "__main__":
     pkl_file = open(diffusion_file, 'rb')
     data1 = pickle.load(pkl_file)
     traj_list = data1['traj_list']
+
     sys1_params = params['sys1_params'] = get_params(traj_list[0])
+    if args.sdeint_method_name == "":
+        logging.info("sdeint_method_name not set. Using %s, the same as system 1." % sys1_params['method'] )
+        sdeint_method_name = params['method'] =  sys1_params['method']
+    else:
+        sdeint_method_name = params['method'] = args.sdeint_method_name
     sys1_regime = sys1_params['regime']
     sys1_Nfock_a = sys1_params['Nfock_a']
     sys1_Nfock_j = sys1_params['Nfock_j']

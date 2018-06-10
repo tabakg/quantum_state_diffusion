@@ -28,6 +28,7 @@ from utils import (
 from prepare_regime import (
     make_system_JC,
     make_system_kerr_bistable,
+    make_system_kerr_bistable_regime2,
     make_system_kerr_qubit,
     ## make_system_JC_two_systems, ## Not yet implemented
     make_system_kerr_bistable_two_systems,
@@ -265,13 +266,10 @@ def main():
     else:
         outdir = args.outdir
 
-    ## make a folder for trajectory data
-    directory_name = "/trajectory_data"
-    traj_folder = (outdir + directory_name)
     try:
-        os.stat(traj_folder)
+        os.stat(outdir)
     except:
-        os.mkdir(traj_folder)
+        os.mkdir(outdir)
 
     param_str = ("%s-"*14)[:-1] %(seed,
                                 ntraj,
@@ -287,7 +285,7 @@ def main():
                                 noise_amp,
                                 trans_phase,
                                 drive_second_system)
-    file_name = '%s/QSD_%s_%s' %(traj_folder,Regime,param_str)
+    file_name = '%s/QSD_%s_%s' %(outdir,Regime,param_str)
 
     # Saving options
     save_mat = args.save2mat
@@ -322,6 +320,9 @@ def main():
         elif Regime == "kerr_bistable":
             logging.info("Regime is set to %s", Regime)
             H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable(Nfock_a)
+        elif Regime == "kerr_bistable2":
+            logging.info("Regime is set to %s", Regime)
+            H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime2(Nfock_a)
         elif Regime == "kerr_qubit":
             logging.info("Regime is set to %s", Regime)
             H, psi0, Ls, obsq_data, obs_names = make_system_kerr_qubit(Nfock_a)

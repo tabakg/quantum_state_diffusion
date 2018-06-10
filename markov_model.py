@@ -124,15 +124,13 @@ def run_markov_chain(start_cluster, T, steps = 10000, slow_down=1):
             s += T[i,j]
             T_cum[i,j] = s
 
-    row_sums = np.asarray([sum(T[i,:]) for i in range(T.shape[1])])
-    for row,row_sum in enumerate(row_sums):
-        '''
-        The row sums can sometimes end up not being 1.
-        Assuming they are >=0, we fix that here.
-        '''
-        if row_sum == 0.:
-            T_cum[row] = 1.
-        if row_sum != 1.:
+    row_sums = np.asarray([T[i,:].sum() for i in range(T.shape[1])])
+    ## The row sums can sometimes end up not being 1.
+    ## Assuming they are >=0, we fix that here.
+    for row, row_sum in enumerate(row_sums):
+        if row_sum == 0.: ## We can't divide by zero
+            T_cum[row] = 1./T_cum.shape[1]
+        else:
             T_cum[row] /= row_sum
 
     current = start_cluster

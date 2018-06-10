@@ -9,8 +9,7 @@ import os
 
 # Variables to run jobs
 ## basedir = os.path.abspath(os.getcwd())
-output_dir='/scratch/users/tabakg/qsd_output'
-traj_folder='/scratch/users/tabakg/qsd_output/trajectory_data'
+output_dir='/scratch/users/tabakg/qsd_output/trajectory_data'
 
 # Variables for each job
 memory = 16000
@@ -64,7 +63,7 @@ for seed in SEEDs:
                                     trans_phase,
                                     drive)
         file_name = 'QSD_%s_%s.pkl' %(REGIME,param_str)
-        file_loc = os.path.join(traj_folder,file_name)
+        file_loc = os.path.join(output_dir,file_name)
         file_exists = os.path.isfile(file_loc)
 
         print("OVERWRITE is %s and file %s existence is %s" %(OVERWRITE,file_name,file_exists))
