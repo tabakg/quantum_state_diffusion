@@ -6,14 +6,23 @@ Run diffusion maps.
 '''
 
 import os
+import hashlib
+OVERWRITE=False
 
 # Variables to run jobs
 ## basedir = os.path.abspath(os.getcwd())
 output_dir='/scratch/users/tabakg/qsd_output/diffusion_maps'
 trajectory_folder='/scratch/users/tabakg/qsd_output/trajectory_data'
 
+## make a folder for trajectory data
+diffusion_maps_folder = os.path.join(output_dir, "diffusion_maps_data")
+try:
+    os.stat(diffusion_maps_folder)
+except:
+    os.mkdir(diffusion_maps_folder)
+
 # Variables for each job
-memory = 16000
+memory = 64000
 partition = 'normal'
 
 # Create subdirectories for job, error, and output files
@@ -43,6 +52,12 @@ def files_by_params(files, params_bool):
   return [[k for k in D if D[k] == v]
           for v in set(D.values())]
 
+def make_hash(traj):
+    """We make a name using a hash because there could be multiple
+    trajectories in traj_list feeding into a single set of diffusion maps"""
+    hash_code = hashlib.sha256(traj.encode('utf-8'))
+    return hash_code.hexdigest()
+
 bools = [False] + [True]*12
 files = [os.path.join(trajectory_folder,f) for f in os.listdir(trajectory_folder) if f[-3:] == 'pkl']
 file_lists = files_by_params(files, bools)
@@ -58,6 +73,15 @@ for file_list in file_lists:
     filey.writelines("#SBATCH --time=2-00:00\n")
     filey.writelines("#SBATCH --mem=%s\n" %(memory))
 
-    filey.writelines("python /scratch/users/tabakg/qsd_dev/diffusion_maps.py --traj '%s'" % (",".join(file_list)))
+    traj = ",".join(file_list)
+    hash_code = make_hash(traj)
+    output = '%s/diffusion_map_%s.pkl' %(diffusion_maps_folder, hash_code)
+
+    if os.path.exists(output) and overwrite is False:
+        print("File exists and overwrite is False! Aborting diffusion map:\n"
+                + output)
+        continue
+
+    filey.writelines("python /scratch/users/tabakg/qsd_dev/diffusion_maps.py --traj '%s' --output_dir %s --output_name" % (traj, output_dir, output))
     filey.close()
     os.system("sbatch -p %s %s" %(partition, filey_loc))

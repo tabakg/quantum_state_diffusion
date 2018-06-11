@@ -5,7 +5,6 @@ import logging
 import os
 import pickle
 import sys
-import hashlib
 
 # Log everything to stdout
 logging.basicConfig(stream=sys.stdout,level=logging.DEBUG)
@@ -68,8 +67,15 @@ def get_parser():
     parser.add_argument("--output_dir",
                         dest='outdir',
                         type=str,
-                        help="Output folder. If not defined, will use place in a directory /trajectory_data.",
+                        help="Output folder.",
                         default=None)
+
+    parser.add_argument("--output_name",
+                        dest='output_name',
+                        type=str,
+                        help="Name of output file.",
+                        default=None)
+
     return parser
 
 def inner_to_FS(val):
@@ -107,10 +113,14 @@ def save_diffusion_coordinates(output, diff_coords):
     pickle.dump(diff_coords,pkl_file,protocol=0)
     pkl_file.close()
 
-    return traj_data
+    return
 
 
-def run_diffusion_map_dense(distance_matrix,eps = 0.5, alpha = 0.5, eig_lower_bound = None, eig_upper_bound = None):
+def run_diffusion_map_dense(distance_matrix,
+                            eps=0.5,
+                            alpha=0.5,
+                            eig_lower_bound=None,
+                            eig_upper_bound=None):
     '''
     Computes the eigenvealues and eigenvectors for diffusion maps
     given a dense input.
@@ -152,6 +162,7 @@ def main():
     eig_lower_bound = params['eig_lower_bound'] = args.eig_lower_bound
     eig_upper_bound = params['eig_upper_bound'] = args.eig_upper_bound
     sample_size = params['sample_size'] = args.sample_size
+    output = args.output_name
 
     # Does the user want to print verbose output?
     quiet = args.quiet
@@ -166,41 +177,46 @@ def main():
     else:
         outdir = args.outdir
 
-    ## make a folder for trajectory data
-    directory_name = "/diffusion_maps_data"
-    diffusion_maps_folder = (outdir + directory_name)
-    try:
-        os.stat(diffusion_maps_folder)
-    except:
-        os.mkdir(diffusion_maps_folder)
+    ## Memory efficient
 
-    def make_hash():
-        """We make a name using a hash because there could be multiple
-        trajectories in traj_list feeding into a single set of diffusion maps"""
-        hash_code = hashlib.sha256(args.traj.encode('utf-8'))
-        return hash_code.hexdigest()
-
-    hash_code = make_hash()
-    output = '%s/diffusion_map_%s.pkl' %(diffusion_maps_folder, hash_code)
-
-    pkl_dict = {traj: load_trajectory(traj) for traj in traj_list}
-
-    diffusion_coords_dict = {}
-    psis = np.concatenate(np.concatenate([pkl_dict[traj]['psis'] for traj in traj_list]))
-    diffusion_coords_dict['expects'] = np.concatenate(np.concatenate([pkl_dict[traj]['expects'] for traj in traj_list]))
-    diffusion_coords_dict['times'] = np.concatenate([pkl_dict[traj]['times'] for traj in traj_list])
-    diffusion_coords_dict['traj_list'] = traj_list
-
-    if sample_size == 0:
-        sampled_psis = psis
-    else:
-        every_other_n = int(psis.shape[-1] / sample_size)
+    diffusion_coords_dict = {'expects': [], 'times': [], 'traj_list': []}
+    psis = []
+    for traj in traj_list:
+        try:
+            loaded = load_trajectory(traj)
+        except pickle.UnpicklingError:
+            logging.info("Could not open trajectory %s" %traj)
+        psis_current_traj = np.concatenate(loaded['psis'])
+        every_other_n = int(psis_current_traj.shape[-1] / (sample_size * len(traj_list)))
         if every_other_n == 0:
-            sampled_psis = psis
-        else:
-            sampled_psis = psis[::every_other_n]
+            every_other_n = 1
+        psis.append(psis_current_traj[::every_other_n])
+        diffusion_coords_dict['expects'].append(np.concatenate(np.concatenate([loaded['expects'] for traj in traj_list]))[::every_other_n])
+        diffusion_coords_dict['times'].append(np.concatenate([loaded['times'] for traj in traj_list])[::every_other_n])
+        diffusion_coords_dict['traj_list'] += traj_list
+    sampled_psis = np.concatenate(psis)
+    diffusion_coords_dict['expects'] = np.concatenate(diffusion_coords_dict['expects'])
+    diffusion_coords_dict['times'] = np.concatenate(diffusion_coords_dict['times'])
+    diffusion_coords_dict['expects'] = np.concatenate(diffusion_coords_dict['expects'])
 
-    psis_doubled = np.concatenate([psis.real.T,psis.imag.T]).T ## convert to (real, imag) format
+    # pkl_dict = {traj: load_trajectory(traj) for traj in traj_list}
+    # diffusion_coords_dict = {}
+    # psis = np.concatenate(np.concatenate([pkl_dict[traj]['psis'] for traj in traj_list]))
+    # diffusion_coords_dict['expects'] = np.concatenate(np.concatenate([pkl_dict[traj]['expects'] for traj in traj_list]))
+    # diffusion_coords_dict['times'] = np.concatenate([pkl_dict[traj]['times'] for traj in traj_list])
+    # diffusion_coords_dict['traj_list'] = traj_list
+    #
+    # if sample_size == 0:
+    #     sampled_psis = psis
+    # else:
+    #     every_other_n = int(psis.shape[-1] / sample_size)
+    #     if every_other_n == 0:
+    #         sampled_psis = psis
+    #     else:
+    #         sampled_psis = psis[::every_other_n]
+
+    ## Changed psis --> sampled_psis here!!
+    psis_doubled = np.concatenate([sampled_psis.real.T,sampled_psis.imag.T]).T ## convert to (real, imag) format
 
     distance_matrix = FS_metric(psis_doubled, psis_doubled)
     vals, vecs = run_diffusion_map_dense(distance_matrix,eps=eps,

@@ -75,7 +75,7 @@ for seed in SEEDs:
           filey = ".job/qsd_%s.job" %(seed)
           filey = open(filey,"w")
           filey.writelines("#!/bin/bash\n")
-          filey.writelines("#SBATCH --job-name=making_%s\n" %(file_name))
+          filey.writelines("#SBATCH --job-name=qsd_2s_%s\n" %(seed))
           filey.writelines("#SBATCH --output=%s/qsd_%s.out\n" %(out_dir,seed))
           filey.writelines("#SBATCH --error=%s/qsd_%s.err\n" %(out_dir,seed))
           filey.writelines("#SBATCH --time=2-00:00\n")

@@ -45,7 +45,7 @@ for markov_model_file in files:
         filey = "%s/qsd_%s.job" %(job_dir, seed)
         filey = open(filey,"w")
         filey.writelines("#!/bin/bash\n")
-        filey.writelines("#SBATCH --job-name=making_%s\n" %(output_file_path))
+        filey.writelines("#SBATCH --job-name=hybrid_%s\n" %(seed))
         filey.writelines("#SBATCH --output=%s/hybrid_qsd_seed_%s.out\n" %(out_dir,seed))
         filey.writelines("#SBATCH --error=%s/hybrid_qsd_seed_%s.err\n" %(out_dir,seed))
         filey.writelines("#SBATCH --time=2-00:00\n")

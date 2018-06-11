@@ -73,7 +73,7 @@ for seed in SEEDs:
       filey = os.path.join(job_dir, "qsd_%s.job" %(seed))
       filey = open(filey,"w")
       filey.writelines("#!/bin/bash\n")
-      filey.writelines("#SBATCH --job-name=making_%s\n" %(file_name))
+      filey.writelines("#SBATCH --job-name=qsd_1s_%s\n" %(seed))
       filey.writelines("#SBATCH --output=%s/qsd_%s.out\n" %(out_dir,seed))
       filey.writelines("#SBATCH --error=%s/qsd_%s.err\n" %(out_dir,seed))
       filey.writelines("#SBATCH --time=2-00:00\n")
@@ -84,7 +84,7 @@ for seed in SEEDs:
                        "--seed %s --save2pkl --regime '%s' --num_systems 1 "
                        "--delta_t %s --duration %s --downsample %s --sdeint_method_name '%s' "
                        "--R %s --eps %s --noise_amp 1. --drive_second_system True"
-                       "\n" %(script_name, out_dir,seed,REGIME,delta_t,duration,downsample,method,R,EPS))
+                       "\n" %(script_name, output_dir,seed,REGIME,delta_t,duration,downsample,method,R,EPS))
 
       filey.close()
       os.system("sbatch -p %s %s/qsd_%s.job" %(partition, job_dir, seed))

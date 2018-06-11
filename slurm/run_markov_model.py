@@ -42,7 +42,7 @@ for diffusion_maps_file in files:
         filey = "%s/qsd_%s.job" %(job_dir, seed)
         filey = open(filey,"w")
         filey.writelines("#!/bin/bash\n")
-        filey.writelines("#SBATCH --job-name=making_%s\n" %(output_file_path))
+        filey.writelines("#SBATCH --job-name=markov_%s\n" %(seed))
         filey.writelines("#SBATCH --output=%s/markov_model_seed%s.out\n" %(out_dir,seed))
         filey.writelines("#SBATCH --error=%s/markov_model_seed%s.err\n" %(out_dir,seed))
         filey.writelines("#SBATCH --time=2-00:00\n")
