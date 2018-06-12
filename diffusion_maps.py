@@ -195,7 +195,6 @@ def main():
         diffusion_coords_dict['times'].append(np.concatenate([loaded['times'] for traj in traj_list])[::every_other_n])
         diffusion_coords_dict['traj_list'] += traj_list
     sampled_psis = np.concatenate(psis)
-    diffusion_coords_dict['expects'] = np.concatenate(diffusion_coords_dict['expects'])
     diffusion_coords_dict['times'] = np.concatenate(diffusion_coords_dict['times'])
     diffusion_coords_dict['expects'] = np.concatenate(diffusion_coords_dict['expects'])
 

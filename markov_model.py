@@ -520,9 +520,21 @@ if __name__ == "__main__":
 
     Ntraj = len(data1['traj_list'])
 
-    expects_sampled = data1['expects'].reshape(Ntraj,
-                                             int(data1['expects'].shape[0]/Ntraj),
-                                             data1['expects'].shape[-1])
+    if len(data1['expects'].shape) == 2:
+        ## data1['expects'].shape = points_total, observables
+        ## reshape into Ntraj, points_per_traj, observables
+        expects_sampled = data1['expects'].reshape(Ntraj,
+                                                 int(data1['expects'].shape[0]/Ntraj),
+                                                 data1['expects'].shape[-1])
+    elif len(data1['expects'].shape) == 1:
+        ## data1['expects'].shape = points_total * observables,
+        ## This resulted from a bug in some datasets, which has been fixed.
+        num_expects = int((data1['expects']).shape[0] / data1['times'].shape[0])
+        expects_sampled = data1['expects'].reshape(Ntraj,
+                                                  int(data1['expects'].shape[0]/(Ntraj*num_expects)),
+                                                  num_expects)
+    else:
+        raise ValueError("Unknown data expects shape.")
 
     vals_tmp, vecs_tmp = data1['vals'][1:], data1['vecs'][:,1:]
     vals, vecs = sorted_eigs(vals_tmp, vecs_tmp)
