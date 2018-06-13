@@ -99,7 +99,7 @@ bools = {'seed': False,
 files = [os.path.join(trajectory_folder,f) for f in os.listdir(trajectory_folder) if f[-3:] == 'pkl']
 file_lists = files_by_params(files, bools)
 
-for file_list in file_lists[3:]:
+for file_list in file_lists:
 
     filey_loc = os.path.join(job_dir, "diff_map.job")
     filey = open(filey_loc,"w")
