@@ -7,7 +7,7 @@ Run diffusion maps.
 
 import os
 import hashlib
-OVERWRITE=False
+overwrite=True
 
 # Variables to run jobs
 ## basedir = os.path.abspath(os.getcwd())
@@ -32,25 +32,47 @@ for new_dir in [output_dir,job_dir,out_dir]:
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
 
-def get_file_params(file):
-    splits = file[:-4].split('-')[1:]
-    s = 0
-    while s < len(splits)-1:
-        if splits[s][-1]=='e':
-            splits[s] = splits[s] + '-' + splits[s+1]
-            splits = splits[:s+1] + splits[s+2:]
-        s+=1
-    return splits
+def get_file_params(traj):
+    params={}
+    things = traj[4:].split('-')
+    first = things[0].split('_')
+    params['seed'] = int(first[-1])
+    params['regime'] = str('_'.join(first[:-1])).split('/')[-1]
+    params['ntraj'] = int(things[1])
+    try:
+        (delta_t1,delta_t2,Nfock_a,Nfock_j,
+            duration,downsample,method,num_systems,
+            R,EPS,noise_amp,trans_phase,drive) = things[2:]
+        params['delta_t'] = float("".join([delta_t1,'-',delta_t2]))
+    except:
+        (delta_t,Nfock_a,Nfock_j,
+            duration,downsample,method,num_systems,
+            R,EPS,noise_amp,trans_phase,drive) = things[2:]
+        params['delta_t'] = float(delta_t)
 
-def files_by_params(files, params_bool):
-  """
-  Return a list of lists, each one having the unique files with distinct params determined by params_bool
-  """
-  D = {file: "".join([p for i,p in enumerate(get_file_params(file))
-                      if params_bool[i]])
-           for file in files}
-  return [[k for k in D if D[k] == v]
-          for v in set(D.values())]
+    params['Nfock_j'] = int(Nfock_j)
+    params['duration'] = float(duration)
+    params['downsample'] = int(downsample)
+    params['method'] = str(method)
+    params['num_systems'] = int(num_systems)
+    params['R'] = float(R)
+    params['EPS'] =float(EPS)
+    params['noise_amp'] =float(noise_amp)
+    params['trans_phase'] =float(trans_phase)
+    params['drive'] = bool(drive)
+    return params
+
+def files_by_params(files, bools):
+    """
+    Return a list of lists, each one having the unique files with distinct params determined by params_bool
+    """
+    params_each_file = {f: get_file_params(f) for f in files}
+    relevant_params_each_file = {f : tuple(sorted((k,v) for k,v in p.items() if bools[k]))
+        for f, p in params_each_file.items()}
+    all_possible_params = set(relevant_params_each_file.values())
+    groups = {p : [f for f in files if relevant_params_each_file[f] == p]
+        for p in all_possible_params}
+    return list(groups.values())
 
 def make_hash(traj):
     """We make a name using a hash because there could be multiple
@@ -58,11 +80,26 @@ def make_hash(traj):
     hash_code = hashlib.sha256(traj.encode('utf-8'))
     return hash_code.hexdigest()
 
-bools = [False] + [True]*12
+## Which values to use to distinguish groups of files
+bools = {'seed': False,
+         'regime': True,
+         'ntraj': True,
+         'delta_t': True,
+         'Nfock_j': True,
+         'duration': True,
+         'downsample': True,
+         'method': True,
+         'num_systems': True,
+         'R': True,
+         'EPS': True,
+         'noise_amp': True,
+         'trans_phase': True,
+         'drive': True}
+
 files = [os.path.join(trajectory_folder,f) for f in os.listdir(trajectory_folder) if f[-3:] == 'pkl']
 file_lists = files_by_params(files, bools)
 
-for file_list in file_lists:
+for file_list in file_lists[3:]:
 
     filey_loc = os.path.join(job_dir, "diff_map.job")
     filey = open(filey_loc,"w")
@@ -82,6 +119,6 @@ for file_list in file_lists:
                 + output)
         continue
 
-    filey.writelines("python /scratch/users/tabakg/qsd_dev/diffusion_maps.py --traj '%s' --output_dir %s --output_name" % (traj, output_dir, output))
+    filey.writelines("python /scratch/users/tabakg/qsd_dev/diffusion_maps.py --traj '%s' --output_dir %s --output_name %s" % (traj, output_dir, output))
     filey.close()
     os.system("sbatch -p %s %s" %(partition, filey_loc))

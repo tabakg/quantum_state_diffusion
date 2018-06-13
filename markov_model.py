@@ -529,6 +529,7 @@ if __name__ == "__main__":
     elif len(data1['expects'].shape) == 1:
         ## data1['expects'].shape = points_total * observables,
         ## This resulted from a bug in some datasets, which has been fixed.
+        ## The trajectories should have been fixed, but include this here just in case.
         num_expects = int((data1['expects']).shape[0] / data1['times'].shape[0])
         expects_sampled = data1['expects'].reshape(Ntraj,
                                                   int(data1['expects'].shape[0]/(Ntraj*num_expects)),
