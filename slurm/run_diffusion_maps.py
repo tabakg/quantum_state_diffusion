@@ -104,18 +104,17 @@ file_lists = files_by_params(files, bools)
 for file_list in file_lists:
 
     traj = ",".join(sorted(file_list))
+    hash_code = make_hash(traj)
+    output = '%s/diffusion_map_%s.pkl' %(diffusion_maps_folder, hash_code)
 
     filey_loc = os.path.join(job_dir, "diff_map.job")
     filey = open(filey_loc,"w")
     filey.writelines("#!/bin/bash\n")
     filey.writelines("#SBATCH --job-name=diff_map\n")
-    filey.writelines("#SBATCH --output=%s/diff_map.out\n" %(out_dir))
-    filey.writelines("#SBATCH --error=%s/diff_map.err\n" %(out_dir))
+    filey.writelines("#SBATCH --output=%s/diff_map_%s.out\n" %(out_dir,hash_code))
+    filey.writelines("#SBATCH --error=%s/diff_map_%s.err\n" %(out_dir,hash_code))
     filey.writelines("#SBATCH --time=2-00:00\n")
     filey.writelines("#SBATCH --mem=%s\n" %(memory))
-
-    hash_code = make_hash(traj)
-    output = '%s/diffusion_map_%s.pkl' %(diffusion_maps_folder, hash_code)
 
     if os.path.exists(output) and overwrite is False:
         print("File exists and overwrite is False! Aborting diffusion map:\n"

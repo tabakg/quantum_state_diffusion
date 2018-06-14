@@ -179,24 +179,39 @@ def main():
 
     ## Memory efficient
 
-    diffusion_coords_dict = {'expects': [], 'times': [], 'traj_list': []}
+    diffusion_coords_dict = {'expects': [], 'times': [], 'traj_list': traj_list}
     psis = []
+    num_successful = 0
     for traj in traj_list:
         try:
             loaded = load_trajectory(traj)
+            num_successful += 1
         except pickle.UnpicklingError:
             logging.info("Could not open trajectory %s" %traj)
+
+        ## Concatenate the psis and expects across trajectories
         psis_current_traj = np.concatenate(loaded['psis'])
-        every_other_n = int(psis_current_traj.shape[-1] / (sample_size * len(traj_list)))
+        expects_current_traj = np.concatenate(loaded['expects'])
+        assert psis_current_traj.shape[0] == expects_current_traj.shape[0]
+
+        ## Find downsample factor to avoid using too much memory
+        every_other_n = int(psis_current_traj.shape[0] * len(traj_list) / (sample_size))
         if every_other_n == 0:
             every_other_n = 1
+
+        ## Downsample psis, expects, and times, and add to dict
         psis.append(psis_current_traj[::every_other_n])
-        diffusion_coords_dict['expects'].append(loaded['expects'][::every_other_n])
+        diffusion_coords_dict['expects'].append(expects_current_traj[::every_other_n])
         diffusion_coords_dict['times'].append(loaded['times'][::every_other_n])
-        diffusion_coords_dict['traj_list'] += traj_list
+
+    ## Consolidate expects and times for consistency
     sampled_psis = np.concatenate(psis)
     diffusion_coords_dict['times'] = np.concatenate(diffusion_coords_dict['times'])
-    diffusion_coords_dict['expects'] = np.concatenate(np.concatenate(diffusion_coords_dict['expects']))
+    diffusion_coords_dict['expects'] = np.concatenate(diffusion_coords_dict['expects'])
+
+    ## Output messages
+    logging.info("Successfully loaded %s/%s trajectories." %(len(traj_list), num_successful))
+    logging.info("Total number of points is %s" % psis_current_traj.shape[0])
 
     # pkl_dict = {traj: load_trajectory(traj) for traj in traj_list}
     # diffusion_coords_dict = {}

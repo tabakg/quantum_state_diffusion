@@ -3,6 +3,7 @@ import logging
 import os
 import pickle
 import sys
+import warnings
 
 import numpy as np
 from numpy import linalg as la
@@ -408,8 +409,7 @@ class markov_model_builder:
                     random_state = 1,
                     verbose = True,
                     which_coords = 'X',
-                    coords_indices_to_use = None,
-                    ):
+                    coords_indices_to_use = None):
         '''
         method can be 'hmm' or 'agg_clustering'.
         which_coords can be 'X' for reduced coordiantes (e.g. diffusion coords)
@@ -420,6 +420,7 @@ class markov_model_builder:
         else:
             raise ValueError("Unknown method type. method can be 'hmm' or 'agg_clustering'. ")
         self.n_clusters = n_clusters
+        self.random_state = random_state
 
         if which_coords == 'X':
             self.X_to_use = self.X
@@ -545,15 +546,34 @@ if __name__ == "__main__":
 
     mod = markov_model_builder(dim_red_obj)
 
-    mod.build_model(n_clusters=n_clusters,
-                    method=method,
-                    n_iter=n_iter,
-                    covariance_type=covariance_type,
-                    tol=tol,
-                    get_expects=True,
-                    random_state=seed,
-                    verbose=True,
-                    which_coords='X',
-                    coords_indices_to_use=None)
+    ## Sometimes hmmlearn raises a ValueError for a bad seed:
+    ## ValueError: startprob_ must sum to 1.0 (got nan)
+    ## Below we handle this. The successful seed value is recorded in
+    ## the markov_model_builder class.
+    tries = 0
+    max_tries = 10
+    while tries < max_tries:
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore",category=DeprecationWarning)
+                mod.build_model(n_clusters=n_clusters,
+                                method=method,
+                                n_iter=n_iter,
+                                covariance_type=covariance_type,
+                                tol=tol,
+                                get_expects=True,
+                                random_state=seed,
+                                verbose=True,
+                                which_coords='X',
+                                coords_indices_to_use=None)
+        except ValueError:
+            seed += 1
+            tries
 
     mod.save(output_file_path)
+
+
+    # load_trajectory('diffusion_map_fb1b6ff0eb4b6940e9312f91b2b244d82e1dee2129d0e81e1ee6851b1d9d864a.pkl')
+    # markov_model_fb1b6ff0eb4b6940e9312f91b2b244d82e1dee2129d0e81e1ee6851b1d9d864a.pkl
+    # markov_model_fe1ff70dd598fc2a7203b18f6bd47c6e7410191c86afd86fd423f1f534321299
+    # markov_model_0fcfe35345366834103e42b8981e15a37acd84b938c78f1359332d02a0ba9398
