@@ -7,7 +7,7 @@ Run diffusion maps.
 
 import os
 import hashlib
-overwrite=True
+overwrite=False
 
 # Variables to run jobs
 ## basedir = os.path.abspath(os.getcwd())
@@ -50,6 +50,8 @@ def get_file_params(traj):
             R,EPS,noise_amp,trans_phase,drive) = things[2:]
         params['delta_t'] = float(delta_t)
 
+    drive = drive[:-4]
+
     params['Nfock_j'] = int(Nfock_j)
     params['duration'] = float(duration)
     params['downsample'] = int(downsample)
@@ -59,7 +61,7 @@ def get_file_params(traj):
     params['EPS'] =float(EPS)
     params['noise_amp'] =float(noise_amp)
     params['trans_phase'] =float(trans_phase)
-    params['drive'] = bool(drive)
+    params['drive'] = True if drive == "True" else False
     return params
 
 def files_by_params(files, bools):
@@ -101,6 +103,8 @@ file_lists = files_by_params(files, bools)
 
 for file_list in file_lists:
 
+    traj = ",".join(sorted(file_list))
+
     filey_loc = os.path.join(job_dir, "diff_map.job")
     filey = open(filey_loc,"w")
     filey.writelines("#!/bin/bash\n")
@@ -110,7 +114,6 @@ for file_list in file_lists:
     filey.writelines("#SBATCH --time=2-00:00\n")
     filey.writelines("#SBATCH --mem=%s\n" %(memory))
 
-    traj = ",".join(file_list)
     hash_code = make_hash(traj)
     output = '%s/diffusion_map_%s.pkl' %(diffusion_maps_folder, hash_code)
 

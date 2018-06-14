@@ -191,12 +191,12 @@ def main():
         if every_other_n == 0:
             every_other_n = 1
         psis.append(psis_current_traj[::every_other_n])
-        diffusion_coords_dict['expects'].append(np.concatenate(np.concatenate([loaded['expects'] for traj in traj_list]))[::every_other_n])
-        diffusion_coords_dict['times'].append(np.concatenate([loaded['times'] for traj in traj_list])[::every_other_n])
+        diffusion_coords_dict['expects'].append(loaded['expects'][::every_other_n])
+        diffusion_coords_dict['times'].append(loaded['times'][::every_other_n])
         diffusion_coords_dict['traj_list'] += traj_list
     sampled_psis = np.concatenate(psis)
     diffusion_coords_dict['times'] = np.concatenate(diffusion_coords_dict['times'])
-    diffusion_coords_dict['expects'] = np.concatenate(diffusion_coords_dict['expects'])
+    diffusion_coords_dict['expects'] = np.concatenate(np.concatenate(diffusion_coords_dict['expects']))
 
     # pkl_dict = {traj: load_trajectory(traj) for traj in traj_list}
     # diffusion_coords_dict = {}
