@@ -105,6 +105,41 @@ def make_system_kerr_bistable_regime2(Nfock, drive=True):
         params_dict = {"alpha0" : 0., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
     return make_system_kerr(Nfock, params_dict)
 
+def make_system_kerr_bistable_regime3(Nfock, drive=True):
+    if drive:
+        params_dict = {"alpha0" : 35., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : 0., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    return make_system_kerr(Nfock, params_dict)
+
+def make_system_kerr_bistable_regime4(Nfock, drive=True):
+    if drive:
+        params_dict = {"alpha0" : 37.5, "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : 0., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    return make_system_kerr(Nfock, params_dict)
+
+def make_system_kerr_bistable_regime5(Nfock, drive=True):
+    if drive:
+        params_dict = {"alpha0" : 40., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : 0., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    return make_system_kerr(Nfock, params_dict)
+
+def make_system_kerr_bistable_regime6(Nfock, drive=True):
+    if drive:
+        params_dict = {"alpha0" : 42.5, "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : 0., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    return make_system_kerr(Nfock, params_dict)
+
+def make_system_kerr_bistable_regime7(Nfock, drive=True):
+    if drive:
+        params_dict = {"alpha0" : 45., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : 0., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    return make_system_kerr(Nfock, params_dict)
+
 
 def make_system_kerr_qubit(Nfock, drive=True):
     if drive:

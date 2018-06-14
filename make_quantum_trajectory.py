@@ -323,6 +323,21 @@ def main():
         elif Regime == "kerr_bistable2":
             logging.info("Regime is set to %s", Regime)
             H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime2(Nfock_a)
+        elif Regime == "kerr_bistable3":
+            logging.info("Regime is set to %s", Regime)
+            H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime3(Nfock_a)
+        elif Regime == "kerr_bistable4":
+            logging.info("Regime is set to %s", Regime)
+            H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime4(Nfock_a)
+        elif Regime == "kerr_bistable5":
+            logging.info("Regime is set to %s", Regime)
+            H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime5(Nfock_a)
+        elif Regime == "kerr_bistable6":
+            logging.info("Regime is set to %s", Regime)
+            H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime6(Nfock_a)
+        elif Regime == "kerr_bistable7":
+            logging.info("Regime is set to %s", Regime)
+            H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime7(Nfock_a)
         elif Regime == "kerr_qubit":
             logging.info("Regime is set to %s", Regime)
             H, psi0, Ls, obsq_data, obs_names = make_system_kerr_qubit(Nfock_a)

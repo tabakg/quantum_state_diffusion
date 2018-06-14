@@ -574,10 +574,11 @@ if __name__ == "__main__":
     if Nfock_j is None:
         Nfock_j = params['Nfock_j'] = sys1_Nfock_j
 
-    if Regime == 'kerr_bistable':
+    ## Allow for regimes 'kerr_bistable...'
+    if Regime[:len('kerr_bistable')] == 'kerr_bistable':
         l1s_reduced = obs_to_ls_kerr_bistable(obs)
     else:
-        raise KeyError("Not implemented: Making the observables for regime %s found in file %s.")
+        raise KeyError("Not implemented: Making the observables for regime %s." %(Regime))
 
     # Saving options
     save_mat = args.save2mat

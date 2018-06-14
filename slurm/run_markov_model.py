@@ -36,7 +36,7 @@ for diffusion_maps_file in files:
     name = 'markov_model_' + hash_name + ".pkl"
     output_file_path = os.path.join(output_dir, name)
     file_exists = os.path.isfile(output_file_path)
-    if not OVERWRITE and not file_exists:
+    if OVERWRITE or not file_exists:
         print("OVERWRITE is %s and file %s existence is %s" %(OVERWRITE, output_file_path, file_exists))
         print("If overwriting or file does not exist, going to process new seed.")
         print ("Processing seed %s" %(seed))

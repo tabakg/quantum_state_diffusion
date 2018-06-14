@@ -32,7 +32,7 @@ for markov_model_file in files:
     markov_model_path = os.path.join(markov_model_folder, markov_model_file)
     hash_name = markov_model_file[len('markov_model_'):-len('.pkl')]
     diffusion_maps_path = os.path.join(diffusion_maps_folder, 'diffusion_map_'+hash_name+'.pkl')
-    name = 'hybrid_QSD_' + hash_name
+    name = 'hybrid_QSD_' + hash_name+'.pkl'
     output_file_path = os.path.join(output_dir, name)
     file_exists = os.path.isfile(output_file_path)
 
