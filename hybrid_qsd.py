@@ -596,6 +596,24 @@ if __name__ == "__main__":
     elif Regime == "kerr_bistable":
         logging.info("Regime is set to %s", Regime)
         H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable(Nfock_a, drive=drive_second_system)
+    elif Regime2 == "kerr_bistable":
+        logging.info("Regime is set to %s", Regime)
+        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime2(Nfock_a, drive=drive_second_system)
+    elif Regime3 == "kerr_bistable":
+        logging.info("Regime is set to %s", Regime)
+        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime3(Nfock_a, drive=drive_second_system)
+    elif Regime4 == "kerr_bistable":
+        logging.info("Regime is set to %s", Regime)
+        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime4(Nfock_a, drive=drive_second_system)
+    elif Regime5 == "kerr_bistable":
+        logging.info("Regime is set to %s", Regime)
+        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime5(Nfock_a, drive=drive_second_system)
+    elif Regime6 == "kerr_bistable":
+        logging.info("Regime is set to %s", Regime)
+        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime6(Nfock_a, drive=drive_second_system)
+    elif Regime7 == "kerr_bistable":
+        logging.info("Regime is set to %s", Regime)
+        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime6(Nfock_a, drive=drive_second_system)
     elif Regime == "kerr_qubit":
         logging.info("Regime is set to %s", Regime)
         H, psi0, Ls, obsq_data, obs_names = make_system_kerr_qubit(Nfock_a, drive=drive_second_system)

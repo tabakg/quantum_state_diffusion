@@ -89,6 +89,10 @@ def make_system_JC(Nfock_a, Nfock_j):
 
 ######## Kerr System
 ######## Bistable regimes based on the examples on pg. 6 in https://arxiv.org/pdf/1402.5983.pdf
+######## When adding a new regime, be sure to import in make_quantum_trajectory.py
+######## And update when regime is checked.
+######## Also make sure to update in hybrid_qsd.py for functions obs_to_ls_...
+######## Also, hybrid_qsd.py check the regime for determining the second system.
 ################################################################################
 
 def make_system_kerr_bistable(Nfock, drive=True):

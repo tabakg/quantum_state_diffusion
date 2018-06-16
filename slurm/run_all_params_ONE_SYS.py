@@ -1,7 +1,7 @@
 #!/usr/bin/python env
 
 '''
-Diffusion Maps: Submit jobs on SLURM
+Quantum State Diffusion: Submit jobs on SLURM
 
 '''
 

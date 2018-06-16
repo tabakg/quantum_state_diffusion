@@ -80,10 +80,10 @@ def prepare_save(data, file_name, obs, params=None):
 
 def get_params(traj):
     params={}
-    things = traj.split('-')
-    first = os.path.split(things[0])[1].split('_')
+    things = traj[4:].split('-')
+    first = things[0].split('_')
     params['seed'] = int(first[-1])
-    params['regime'] = str('_'.join(first[1:-1]))
+    params['regime'] = str('_'.join(first[:-1])).split('/')[-1]
     params['ntraj'] = int(things[1])
     try:
         (delta_t1,delta_t2,Nfock_a,Nfock_j,
@@ -96,7 +96,8 @@ def get_params(traj):
             R,EPS,noise_amp,trans_phase,drive) = things[2:]
         params['delta_t'] = float(delta_t)
 
-    params['Nfock_a'] = int(Nfock_a)
+    drive = drive[:-4] ## drop the .pkl extension...
+
     params['Nfock_j'] = int(Nfock_j)
     params['duration'] = float(duration)
     params['downsample'] = int(downsample)
@@ -106,5 +107,5 @@ def get_params(traj):
     params['EPS'] =float(EPS)
     params['noise_amp'] =float(noise_amp)
     params['trans_phase'] =float(trans_phase)
-    params['drive'] = bool(drive)
+    params['drive'] = True if drive == "True" else False
     return params

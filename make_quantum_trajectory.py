@@ -29,6 +29,11 @@ from prepare_regime import (
     make_system_JC,
     make_system_kerr_bistable,
     make_system_kerr_bistable_regime2,
+    make_system_kerr_bistable_regime3,
+    make_system_kerr_bistable_regime4,
+    make_system_kerr_bistable_regime5,
+    make_system_kerr_bistable_regime6,
+    make_system_kerr_bistable_regime7,
     make_system_kerr_qubit,
     ## make_system_JC_two_systems, ## Not yet implemented
     make_system_kerr_bistable_two_systems,
