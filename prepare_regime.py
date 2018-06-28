@@ -109,6 +109,19 @@ def make_system_kerr_bistable_regime2(Nfock, drive=True):
         params_dict = {"alpha0" : 0., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
     return make_system_kerr(Nfock, params_dict)
 
+def make_system_kerr_bistable_regime_chose_drive(Nfock, which_kerr, drive):
+    """Most custom optionself.
+
+    User can pick between bistable kerr A and B (which_kerr).
+
+    """
+    assert which_kerr in ['A', 'B']
+    if which_kerr == 'A':
+        params_dict = {"alpha0" : drive, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : drive, "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+    return make_system_kerr(Nfock, params_dict)
+
 def make_system_kerr_bistable_regime3(Nfock, drive=True):
     if drive:
         params_dict = {"alpha0" : 35., "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
@@ -220,6 +233,62 @@ def make_system_kerr_qubit_two_systems(Nfock, drive_second_system=False):
     params_dict = {"alpha0" : 10.0, "chi" : -100, "Delta" : 0., "kappa_1" : 0.5, "kappa_2" : 0}
     return make_system_kerr_two_systems(Nfock, params_dict, drive_second_system=drive_second_system)
 
+def make_system_empty_then_kerr(Nfock, which_kerr, custom_drive,
+                                drive_second_system=False, S_mult=-1.):
+
+    assert which_kerr in ['A', 'B']
+    if which_kerr == 'A':
+        params_dict = {"alpha0" : custom_drive, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : custom_drive, "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+
+    # Define Kerr parameters for system 2:
+    chi = symbols("chi", real=True, positive=True)
+    Delta = symbols("Delta", real=True)
+    kappa_1, kappa_2 = symbols("kappa_1, kappa_2", real=True, positive=True)
+    alpha0 = symbols("alpha_0")
+
+    params = {alpha0: params_dict["alpha0"],
+              chi: params_dict["chi"],
+              Delta: params_dict["Delta"],
+              kappa_1: params_dict["kappa_1"],
+              kappa_2: params_dict["kappa_2"],
+              }
+
+    ## Empty system 1:
+    a_e = Destroy("e") ## fictitious operator for empty system 1
+    S_empty = identity_matrix(2) * S_mult
+    L_empty = [0., 0.]
+    H_empty = a_e.dag()*a_e ## Need to feed in operator, will become zero for dim == 1...
+    EMPTY = SLH(S_empty, L_empty, H_empty).toSLH()
+
+    # Add coherent drive
+    SYS_EMPTY = EMPTY << Displace(alpha=alpha0)+cid(1)
+
+    # Construct H_num and L_num for a driven system
+    SYS_EMPTY = SYS_EMPTY.toSLH()
+    SYS_EMPTY_num = SYS_EMPTY.substitute(params)
+    SYS_EMPTY_num.space.dimension = 1
+    H1, L1s = SYS_EMPTY_num.HL_to_qutip()
+
+    # Construct Kerr SLH
+    a_k = Destroy("k")
+    S = identity_matrix(2) * S_mult
+    L = [sqrt(kappa_1)*a_k, sqrt(kappa_2)*a_k]
+    H = Delta*a_k.dag()*a_k + chi/2*a_k.dag()*a_k.dag()*a_k*a_k
+    KERR = SLH(S, L, H).toSLH()
+
+    # Construct H_num and L_num for a driven system
+    SYS = KERR.toSLH()
+    SYS_num = SYS.substitute(params)
+    SYS_num.space.dimension = Nfock
+    H2, L2s = SYS_num.HL_to_qutip()
+    obs = [a_k.dag()*a_k, a_k+a_k.dag(), (a_k-a_k.dag())/1j]
+    obsq = [o.to_qutip(full_space = SYS_num.space) for o in obs]
+    psi0 = qutip.tensor(qutip.basis(Nfock,0)).data
+    obsq_data = [ob.data for ob in obsq]
+
+    return H1.data, H2.data, psi0, [L.data for L in L1s], [L.data for L in L2s], obsq_data, obs
 
 def make_system_kerr_two_systems(Nfock, params_dict, drive_second_system=False, S_mult=-1.):
 

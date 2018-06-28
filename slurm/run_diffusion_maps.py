@@ -9,6 +9,9 @@ import os
 import hashlib
 sys.path.append('/scratch/users/tabakg/qsd_dev')
 from utils import get_params
+from utils import files_by_params
+from utils import bools
+from utils import make_hash
 overwrite=False
 
 # Variables to run jobs
@@ -24,7 +27,7 @@ except:
     os.mkdir(diffusion_maps_folder)
 
 # Variables for each job
-memory = 64000
+memory = 16000
 partition = 'normal'
 
 # Create subdirectories for job, error, and output files
@@ -34,42 +37,8 @@ for new_dir in [output_dir,job_dir,out_dir]:
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
 
-def files_by_params(files, bools):
-    """
-    Return a list of lists, each one having the unique files with distinct params determined by params_bool
-    """
-    params_each_file = {f: get_params(f) for f in files}
-    relevant_params_each_file = {f : tuple(sorted((k,v) for k,v in p.items() if bools[k]))
-        for f, p in params_each_file.items()}
-    all_possible_params = set(relevant_params_each_file.values())
-    groups = {p : [f for f in files if relevant_params_each_file[f] == p]
-        for p in all_possible_params}
-    return list(groups.values())
-
-def make_hash(traj):
-    """We make a name using a hash because there could be multiple
-    trajectories in traj_list feeding into a single set of diffusion maps"""
-    hash_code = hashlib.sha256(traj.encode('utf-8'))
-    return hash_code.hexdigest()
-
-## Which values to use to distinguish groups of files
-bools = {'seed': False,
-         'regime': True,
-         'ntraj': True,
-         'delta_t': True,
-         'Nfock_j': True,
-         'duration': True,
-         'downsample': True,
-         'method': True,
-         'num_systems': True,
-         'R': True,
-         'EPS': True,
-         'noise_amp': True,
-         'trans_phase': True,
-         'drive': True}
-
 files = [os.path.join(trajectory_folder,f) for f in os.listdir(trajectory_folder) if f[-3:] == 'pkl']
-file_lists = files_by_params(files, bools)
+file_lists = files_by_params(files, bools, max_seed=16, duration=15.)
 
 for file_list in file_lists:
 

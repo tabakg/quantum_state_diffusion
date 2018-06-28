@@ -5,6 +5,9 @@ import logging
 import os
 import pickle
 import sys
+sys.path.append('/scratch/users/tabakg/qsd_dev')
+from utils import load_trajectory
+from utils import save
 
 # Log everything to stdout
 logging.basicConfig(stream=sys.stdout,level=logging.DEBUG)
@@ -100,20 +103,6 @@ def FS_metric(u, v):
 
     converter(inner, inner_to_FS)
     return inner
-
-def load_trajectory(traj):
-    pkl_file = open(traj, 'rb')
-    pkl_dict = pickle.load(pkl_file)
-    pkl_file.close()
-    return pkl_dict
-
-def save_diffusion_coordinates(output, diff_coords):
-
-    pkl_file = open(output, 'wb')
-    pickle.dump(diff_coords,pkl_file,protocol=0)
-    pkl_file.close()
-
-    return
 
 
 def run_diffusion_map_dense(distance_matrix,
@@ -239,7 +228,7 @@ def main():
                                         eig_upper_bound=eig_upper_bound)
     diffusion_coords = {"vals":vals, "vecs":vecs}
     diffusion_coords_dict.update(diffusion_coords)
-    save_diffusion_coordinates(output, diffusion_coords_dict)
+    save(output, diffusion_coords_dict)
 
 if __name__ == '__main__':
     main()

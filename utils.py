@@ -2,6 +2,7 @@ from scipy.io import savemat
 import pickle
 import logging
 import os
+import hashlib
 
 def print_params(params):
     '''print params will print a dictioary of parameters to the screen for the user
@@ -78,7 +79,23 @@ def prepare_save(data, file_name, obs, params=None):
 
     return mdict
 
+def load_trajectory(traj):
+    """Generic load"""
+    pkl_file = open(traj, 'rb')
+    pkl_dict = pickle.load(pkl_file)
+    pkl_file.close()
+    return pkl_dict
+
+def save(file, pkl_dict):
+    """Generic save"""
+    pkl_file = open(file, 'wb')
+    pickle.dump(pkl_dict, pkl_file, protocol=0)
+    pkl_file.close()
+
 def get_params(traj):
+    """Get parameters from trajectory file name.
+
+    """
     params={}
     things = traj[4:].split('-')
     first = things[0].split('_')
@@ -109,3 +126,42 @@ def get_params(traj):
     params['trans_phase'] =float(trans_phase)
     params['drive'] = True if drive == "True" else False
     return params
+
+## Which values to use to distinguish groups of files
+bools = {'seed': False,
+         'regime': True,
+         'ntraj': True,
+         'delta_t': True,
+         'Nfock_j': True,
+         'duration': True,
+         'downsample': True,
+         'method': True,
+         'num_systems': True,
+         'R': True,
+         'EPS': True,
+         'noise_amp': True,
+         'trans_phase': True,
+         'drive': True}
+
+def files_by_params(files, bools, max_seed=None, duration=None):
+    """
+    Return a list of lists, each one having the unique files with distinct params determined by params_bool
+    """
+    params_each_file = {f: get_params(f) for f in files}
+    if max_seed:
+        params_each_file = {f:p for f,p in params_each_file.items() if p['seed'] <= max_seed}
+    if duration:
+        params_each_file = {f:p for f,p in params_each_file.items() if p['duration'] == duration}
+    relevant_params_each_file = {f : tuple(sorted((k,v) for k,v in p.items() if bools[k]))
+        for f, p in params_each_file.items()}
+    all_possible_params = set(relevant_params_each_file.values())
+    groups = {p : [f for f in relevant_params_each_file if relevant_params_each_file[f] == p]
+        for p in all_possible_params}
+    return list(groups.values())
+
+
+def make_hash(traj):
+    """We make a name using a hash because there could be multiple
+    trajectories in traj_list feeding into a single set of diffusion maps"""
+    hash_code = hashlib.sha256(traj.encode('utf-8'))
+    return hash_code.hexdigest()

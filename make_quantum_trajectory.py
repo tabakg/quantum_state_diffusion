@@ -34,10 +34,12 @@ from prepare_regime import (
     make_system_kerr_bistable_regime5,
     make_system_kerr_bistable_regime6,
     make_system_kerr_bistable_regime7,
+    make_system_kerr_bistable_regime_chose_drive,
     make_system_kerr_qubit,
     ## make_system_JC_two_systems, ## Not yet implemented
     make_system_kerr_bistable_two_systems,
     make_system_kerr_qubit_two_systems,
+    make_system_empty_then_kerr,
 )
 
 import sdeint
@@ -343,6 +345,11 @@ def main():
         elif Regime == "kerr_bistable7":
             logging.info("Regime is set to %s", Regime)
             H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime7(Nfock_a)
+        elif Regime[:len("kerr_bistable")] == "kerr_bistable": ##inputs in this case are e.g. kerr_bistableA33.25_...
+            which_kerr = Regime[len("kerr_bistable")] ## e.g. A in kerr_bistableA33.25_
+            custom_drive = float(Regime[len("kerr_bistableA"):]) ## e.g. 33.25 in kerr_bistableA33.25
+            logging.info("Regime is set to %s, with custom drive %s" %(Regime, custom_drive))
+            H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime_chose_drive(Nfock_a, which_kerr, custom_drive)
         elif Regime == "kerr_qubit":
             logging.info("Regime is set to %s", Regime)
             H, psi0, Ls, obsq_data, obs_names = make_system_kerr_qubit(Nfock_a)
@@ -374,6 +381,11 @@ def main():
         elif Regime == "kerr_qubit":
             logging.info("Regime is set to %s", Regime)
             H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_kerr_qubit_two_systems(Nfock_a, drive_second_system)
+        elif Regime[:len("empty_then_kerr")] == 'empty_then_kerr': ##e.g. empty_then_kerrA33.25
+            which_kerr = Regime[len("empty_then_kerr")] ## e.g. A in empty_then_kerrA33.25_
+            custom_drive = float(Regime[len("empty_then_kerrA"):]) ## e.g. 33.25 in empty_then_kerrA33.25
+            logging.info("Regime is set to %s, with custom drive %s" %(Regime, custom_drive))
+            H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_empty_then_kerr(Nfock_a, which_kerr, custom_drive)
         else:
             logging.error("Unknown regime, %s, or not implemented yet.", Regime)
             raise ValueError("Unknown regime, or not implemented yet.")
