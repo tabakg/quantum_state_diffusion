@@ -33,11 +33,12 @@ for file_list in file_lists:
     traj = ",".join(sorted(file_list))
     hash_code = make_hash(traj)
     traj_list = [item for item in traj.split(',')]
-    print("Extracting expects for hashcode %s" %hash_code)
+    print("Extracting expects for hashcode %s..." %hash_code)
     expects_name = 'expects_%s.pkl' %(hash_code)
     expects_loc = os.path.join(expects_dir, expects_name)
 
     if overwrite is False and os.path.exists(expects_loc):
+        print("(already exists, skipping...)")
         continue
 
     coords_dict = {'expects': [], 'times': [], 'traj_list': traj_list}
@@ -46,8 +47,20 @@ for file_list in file_lists:
         try:
             loaded = load_trajectory(traj)
             num_successful += 1
-        except pickle.UnpicklingError:
+            print("Successfully loaded files: ")
+            print("traj_list = %s" %traj_list)
+        except:
             logging.info("Could not open trajectory %s" %traj)
+            print("Could not open trajectory %s" %traj)
+            print("Looking in trajectory folder...")
+            try:
+                traj_loc = os.path.join(traj_dir, traj)
+                loaded = load_trajectory(traj_loc)
+                num_successful += 1
+                print("Found and successfully loaded!")
+            except:
+                print("Could not open trajectory %s from trajectory folder" %traj)
+                continue
 
         expects_current_traj = np.concatenate(loaded['expects'])
 
@@ -58,6 +71,9 @@ for file_list in file_lists:
 
         coords_dict['expects'].append(expects_current_traj[::every_other_n])
         coords_dict['times'].append(loaded['times'][::every_other_n])
+
+    if num_successful == 0:
+        continue
 
 
     ## Consolidate expects and times for consistency
