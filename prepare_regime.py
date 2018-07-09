@@ -224,6 +224,15 @@ def make_system_kerr(Nfock, params_dict):
 ######## Kerr System
 ################################################################################
 
+def make_system_kerr_bistable_regime_chose_drive_two_systems(Nfock, which_kerr, custom_drive, drive_second_system=False):
+
+    assert which_kerr in ['A', 'B']
+    if which_kerr == 'A':
+        params_dict = {"alpha0" : custom_drive, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}
+    else:
+        params_dict = {"alpha0" : custom_drive, "chi" : -1.5, "Delta" : 60., "kappa_1" : 25, "kappa_2" : 25}
+
+    return make_system_kerr_two_systems(Nfock, params_dict, drive_second_system=drive_second_system)
 
 def make_system_kerr_bistable_two_systems(Nfock, drive_second_system=False):
     params_dict = {"alpha0" : 21.75, "chi" : -10, "Delta" : 100., "kappa_1" : 25, "kappa_2" : 25}

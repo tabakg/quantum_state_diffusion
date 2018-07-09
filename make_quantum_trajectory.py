@@ -40,6 +40,7 @@ from prepare_regime import (
     make_system_kerr_bistable_two_systems,
     make_system_kerr_qubit_two_systems,
     make_system_empty_then_kerr,
+    make_system_kerr_bistable_regime_chose_drive_two_systems,
 )
 
 import sdeint
@@ -386,6 +387,12 @@ def main():
             custom_drive = float(Regime[len("empty_then_kerrA"):]) ## e.g. 33.25 in empty_then_kerrA33.25
             logging.info("Regime is set to %s, with custom drive %s" %(Regime, custom_drive))
             H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_empty_then_kerr(Nfock_a, which_kerr, custom_drive)
+        elif Regime[:len("kerr_bistable")] == "kerr_bistable": ##inputs in this case are e.g. kerr_bistableA33.25_...
+            which_kerr = Regime[len("kerr_bistable")] ## e.g. A in kerr_bistableA33.25_
+            custom_drive = float(Regime[len("kerr_bistableA"):]) ## e.g. 33.25 in kerr_bistableA33.25
+            logging.info("Regime is set to %s, with custom drive %s" %(Regime, custom_drive))
+            H1, H2, psi0, L1s, L2s, obsq_data, obs_names = make_system_kerr_bistable_regime_chose_drive_two_systems(Nfock_a, which_kerr, custom_drive)
+
         else:
             logging.error("Unknown regime, %s, or not implemented yet.", Regime)
             raise ValueError("Unknown regime, or not implemented yet.")
