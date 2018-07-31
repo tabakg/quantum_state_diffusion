@@ -3,6 +3,8 @@ import pickle
 import logging
 import os
 import hashlib
+import numpy as np
+from scipy import sparse
 
 def print_params(params):
     '''print params will print a dictioary of parameters to the screen for the user
@@ -165,3 +167,57 @@ def make_hash(traj):
     trajectories in traj_list feeding into a single set of diffusion maps"""
     hash_code = hashlib.sha256(traj.encode('utf-8'))
     return hash_code.hexdigest()
+
+
+def dim_check(H, Ls):
+    """Make sure the dimensions match.
+
+    Args:
+        H (possibly sparse matrix)
+        Ls (list of possibly sparse matrices)
+
+    Ensures that H and each L in Ls is a square
+    matrix of the same size.
+    """
+    N = H.shape[0]
+    assert H.shape == (N, N)
+    assert all(L.shape == (N, N) for L in Ls)
+    return N
+
+
+def preprocess_operators(H1, H2, L1s, L2s, ops_on_whole_space):
+    """Make sure operators are defined over the entire space.
+
+    First, check that all dimensions match. Then return either the given
+    operators, or extend them so that they are defined on the Kronecker product
+    Hilbert space.
+
+    Args:
+        H1: square matrix
+            Hamiltonian matrix of system 1
+        H2: square matrix
+            Hamiltonian matrix of system 2
+        L1s: list of square matrices
+            Lindblad matrices of system 1
+        L2s: list of square matrices
+            Lindblad matrices of system 2
+        ops_on_whole_space: boolean
+            whether the given operators are defined on the whole space
+
+    Returns: H1, H2, L1s, L2s
+        Operators extended to whole space if necessary
+    """
+    N1 = dim_check(H1, L1s)
+    N2 = dim_check(H2, L2s)
+
+    if ops_on_whole_space:
+        assert(N1 == N2)
+        return H1, H2, L1s, L2s
+    else:
+        I1 = np.eye(N1)
+        I2 = np.eye(N2)
+        H1 = sparse.csr_matrix(np.kron(H1.todense(), I2))
+        H2 = sparse.csr_matrix(np.kron(I1, H2.todense()))
+        L1s = [sparse.csr_matrix(np.kron(L1.todense(), I2)) for L1 in L1s]
+        L2s = [sparse.csr_matrix(np.kron(I1, L2.todense())) for L2 in L2s]
+        return H1, H2, L1s, L2s

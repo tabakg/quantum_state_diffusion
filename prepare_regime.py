@@ -5,7 +5,6 @@ import logging
 import qutip
 from scipy import sparse
 
-
 from qnet.algebra.operator_algebra import *
 from qnet.algebra.circuit_algebra import *
 from qnet.circuit_components.displace_cc import Displace
