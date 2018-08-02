@@ -42,7 +42,8 @@ def sparse_op_to_json(P):
 
 def gen_num_system(H,
                    psi0,
-                   tspan,
+                   duration,
+                   delta_t,
                    Ls,
                    sdeint_method,
                    obsq=None,
@@ -56,8 +57,10 @@ def gen_num_system(H,
             Hamiltonian.
         psi0: Nx1 csr matrix, dtype = complex128
             input state.
-        tspan: numpy array, dtype = float
-            Time series of some length T.
+        duration: float.
+            Duration of simulation
+        delta_t: float.
+            duration of a single timestep.
         Ls: list of NxN csr matrices, dtype = complex128
             System-environment interaction terms (Lindblad terms).
         sdeint_method (Optional) SDE solver method:
@@ -109,18 +112,17 @@ def gen_num_system(H,
         obsq_json = []
 
     psi0_list = split_complex(list(np.asarray(psi0.todense()).T[0]))
-    tspan_list = list(tspan)
 
     data = {"H_eff": H_eff_json,
             "Ls": Ls_json,
             "psi0": psi0_list,
-            "tspan": tspan_list,
+            "duration": duration,
+            "delta_t": delta_t,
             "sdeint_method": sdeint_method,
             "obsq": obsq_json,
             "downsample": downsample,
             "ntraj": ntraj,
-            "seeds": seeds,
-            }
+            "seeds": seeds}
 
     with open(json_file_dir, 'w') as outfile:
         json.dump(data, outfile)
@@ -129,7 +131,8 @@ def gen_num_system(H,
 def gen_num_system_two_systems(H1,
                                H2,
                                psi0,
-                               tspan,
+                               duration,
+                               delta_t,
                                L1s,
                                L2s,
                                R,
@@ -152,8 +155,10 @@ def gen_num_system_two_systems(H1,
             Hamiltonian for system 2.
         psi0: Nx1 csr matrix, dtype = complex128
             input state.
-        tspan: numpy array, dtype = float
-            Time series of some length T.
+        duration: float.
+            Duration of simulation
+        delta_t: float.
+            duration of a single timestep.
         L1s: list of N1xN1 csr matrices, dtype = complex128
             System-environment interaction terms (Lindblad terms) for system 1.
         L2s: list of N2xN2 csr matrices, dtype = complex128
@@ -218,7 +223,6 @@ def gen_num_system_two_systems(H1,
         obsq_json = []
 
     psi0_list = split_complex(list(np.asarray(psi0.todense()).T[0]))
-    tspan_list = list(tspan)
 
     T = np.sqrt(1 - R**2)
 
@@ -231,7 +235,8 @@ def gen_num_system_two_systems(H1,
             "L1s": L1s_json,
             "L2s": L2s_json,
             "psi0": psi0_list,
-            "tspan": tspan_list,
+            "duration": duration,
+            "delta_t": delta_t,
             "sdeint_method": sdeint_method,
             "obsq": obsq_json,
             "downsample": downsample,
