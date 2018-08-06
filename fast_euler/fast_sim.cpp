@@ -317,14 +317,18 @@ void take_step(one_system & system, std::vector<comp> & noise, std::vector<comp>
   update_products_sequence(system.Ls_offsets, system.Ls_diagonals, current_psi, system.Ls_diags_x_psi);
   update_Ls_expectations(current_psi, system.Ls_diags_x_psi, system.Ls_expectations);
 
-  // update psi
+  //////// update psi
+
+  // Add Hamiltonian component
   for (int i=0; i<system.H_eff_diags_x_psi.size(); i++){
     add_second_to_first(current_psi, system.H_eff_diags_x_psi[i]);
   }
 
+  // Add L components, including noise terms
   for (int i=0; i<system.Ls_diags_x_psi.size(); i++){
     comp mult_L_by = std::conj(system.Ls_expectations[i]) + noise[i];
     for (int j=0; j<system.Ls_diags_x_psi[i].size(); j++){
+      // std::cout << norm(noise[i]) / norm(system.Ls_expectations[i]) << std::endl;
       add_second_to_first(current_psi, system.Ls_diags_x_psi[i][j], mult_L_by);
     }
   }
@@ -369,7 +373,7 @@ void run_trajectory(one_system system, int seed, int steps_for_noise){
 
   // accepts float, double, or long double
   float mean = 0;
-  float std_dev = sqrt(0.5 * system.delta_t);
+  float std_dev = sqrt(0.5);
   std::normal_distribution<float> distribution(0., std_dev);
 
   // random variables stored here. They are replenished every steps_for_noise steps.
@@ -394,7 +398,7 @@ void run_trajectory(one_system system, int seed, int steps_for_noise){
     if (k == 0){
       // std::copy(current_psi.begin(), current_psi.end(), psis[l].begin());
       // l++; // number of psis recorded
-      // show_state(current_psi, system.dimension);
+      show_state(current_psi, system.dimension);
     }
     take_step(system, randoms[j], current_psi);
   }
@@ -402,7 +406,7 @@ void run_trajectory(one_system system, int seed, int steps_for_noise){
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
   duration<double> time_span = duration_cast< duration<double> >(t2 - t1);
 
-  show_state(current_psi, system.dimension);
+  // show_state(current_psi, system.dimension);
 
   std::cout << "It took me " << time_span.count() << " seconds." << std::endl;
   std::cout << "Time per step was: " << time_span.count() / num_steps * 1000000 << " micro seconds." << std::endl;
