@@ -8,50 +8,48 @@ g++ fast_sim.cpp -o fast_sim -std=c++11
 #include <iostream>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <eigen3/Eigen/Sparse>
 #include <random>
 #include <thread>
 #include <math.h>       /* sqrt */
 #include <assert.h>     /* assert */
 #include <chrono>
+#include <complex>      // std::complex
 
-
-// for convenience
 using json = nlohmann::json;
-using namespace Eigen;
 using namespace std::chrono;
 
+typedef float num_type;
 typedef std::string string;
-typedef std::complex<float> comp;
-const std::complex<float> imag_unit(0.0,1.0);
+typedef std::complex<num_type> comp;
+const std::complex<num_type> imag_unit(0.0,1.0);
 typedef std::vector<comp> comp_vec;
 
 std::vector<string> inputs_one_system = {"H_eff",
-                                    "Ls",
-                                    "psi0",
-                                    "duration",
-                                    "delta_t",
-                                    "sdeint_method",
-                                    "obsq",
-                                    "downsample",
-                                    "ntraj",
-                                    "seeds"};
+                                         "Ls",
+                                         "psi0",
+                                         "duration",
+                                         "delta_t",
+                                         "sdeint_method",
+                                         "obsq",
+                                         "downsample",
+                                         "ntraj",
+                                         "seeds"};
 
 std::vector<string> inputs_two_systems = {"H1_eff",
-                                    "H2_eff",
-                                    "L1s","L2s",
-                                    "psi0",
-                                    "duration",
-                                    "delta_t",
-                                    "sdeint_method",
-                                    "obsq",
-                                    "downsample",
-                                    "ntraj",
-                                    "seeds",
-                                    "R",
-                                    "T",
-                                    "eps",
-                                    "n"};
+                                          "H2_eff",
+                                          "L1s","L2s",
+                                          "psi0",
+                                          "duration",
+                                          "delta_t",
+                                          "sdeint_method",
+                                          "obsq",
+                                          "downsample",
+                                          "ntraj",
+                                          "seeds",
+                                          "R",
+                                          "T",
+                                          "eps",
+                                          "n"};
 
 typedef struct
 {
@@ -61,8 +59,8 @@ typedef struct
   int dimension;
 
   // Other parameters
-  float duration;
-  float delta_t;
+  num_type duration;
+  num_type delta_t;
   string sdeint_method;
   int downsample;
   int ntraj;
@@ -130,15 +128,15 @@ int get_num_systems(json & j){
   else return -1;
 }
 
-comp_vec json_to_complex_array(json & j_arr, float scaling = 1.){
+comp_vec json_to_complex_array(json & j_arr, num_type scaling = 1.){
   // Assumes a json serialization with fields "real" and "imag".
-  // These should be arrays of the same size containing floats.
-  // Output is a std::vector with complex<float> entries.
+  // These should be arrays of the same size containing num_types.
+  // Output is a std::vector with complex<num_type> entries.
   comp_vec arr;
   int size = j_arr["real"].size();
   arr.reserve(size);
-  float real_part;
-  float imag_part;
+  num_type real_part;
+  num_type imag_part;
   for(int n=0; n < size; n++){
     real_part = j_arr["real"][n];
     imag_part = j_arr["imag"][n];
@@ -150,7 +148,7 @@ comp_vec json_to_complex_array(json & j_arr, float scaling = 1.){
 void load_diag_operator(std::vector<comp_vec> & diagonals,
                         std::vector<int> & offsets,
                         json & diag_json,
-                        float scaling=1.){
+                        num_type scaling=1.){
   // Loads from JSON with fields "data" and "offsets" representing a sparse matrix.
   json json_data = diag_json["data"];
   for (int i = 0; i < json_data.size(); i++){
@@ -165,7 +163,7 @@ void load_diag_operator(std::vector<comp_vec> & diagonals,
 void load_diag_operator_sequence(std::vector<std::vector<comp_vec>> & diagonals,
                         std::vector<std::vector<int>> & offsets,
                         json & diag_json,
-                        float scaling=1.){
+                        num_type scaling=1.){
   // Load each set of diagonals and offsets for each in the sequence
   std::vector<comp_vec> diags_entry;
   std::vector<int> offsets_entry;
@@ -180,7 +178,7 @@ void get_new_randoms(std::vector<std::vector<comp>> & randoms,
                      int size1,
                      int size2,
                      std::default_random_engine & generator,
-                     std::normal_distribution<float> & distribution){
+                     std::normal_distribution<num_type> & distribution){
   for (int i=0; i<size1; ++i) {
     for (int j=0; j<size2; ++j) {
       randoms[i][j] = distribution(generator) + imag_unit * distribution(generator);
@@ -230,7 +228,7 @@ void mult_vecs_offset_lower(comp_vec& diag, comp_vec& vec, comp_vec& out, int& o
 
 comp dot(comp z1, comp z2){
   // returns z1.conj() * z2
-  float a, b, c, d;
+  num_type a, b, c, d;
   a = real(z1); b = imag(z1);
   c = real(z2); d = imag(z2);
   return comp(a * c + b * d, a * d - b * c);
@@ -309,15 +307,14 @@ void update_Ls_expectations(comp_vec & current_psi,
   }
 }
 
-void take_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
-
-  // Update structures
+void update_structures(one_system & system, std::vector<comp> & current_psi){
   // TODO: separate data for positive and negative offsets
   update_products(system.H_eff_offsets, system.H_eff_diagonals, current_psi, system.H_eff_diags_x_psi);
   update_products_sequence(system.Ls_offsets, system.Ls_diagonals, current_psi, system.Ls_diags_x_psi);
   update_Ls_expectations(current_psi, system.Ls_diags_x_psi, system.Ls_expectations);
+}
 
-  //////// update psi
+void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
 
   // Add Hamiltonian component
   for (int i=0; i<system.H_eff_diags_x_psi.size(); i++){
@@ -332,13 +329,33 @@ void take_step(one_system & system, std::vector<comp> & noise, std::vector<comp>
       add_second_to_first(current_psi, system.Ls_diags_x_psi[i][j], mult_L_by);
     }
   }
+}
 
-
-
-  // normalize psi
+void take_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+  update_structures(system, current_psi);
+  update_psi(system, noise, current_psi);
   //TODO: monitor size of psi (when to normalize)
   normalize(current_psi);
 }
+
+void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+
+  std::vector<comp> intermediate_psi (current_psi.size());
+  std::copy(current_psi.begin(), current_psi.end(), intermediate_psi.begin());
+
+  // initial estimate for various structures using current_psi
+  update_structures(system, current_psi);
+  // update intermediate_psi using initial structure estimates
+  update_psi(system, noise, intermediate_psi);
+  // use intermediate_psi to update structures (estimate at next step)
+  update_structures(system, intermediate_psi);
+  // use the estimate from the next step to update current_psi
+  update_psi(system, noise, current_psi);
+
+  //TODO: monitor size of psi (when to normalize)
+  normalize(current_psi);
+}
+
 
 void show_state(comp_vec current_psi, int dimension){
 
@@ -371,10 +388,10 @@ void run_trajectory(one_system system, int seed, int steps_for_noise){
   int num_steps = int(system.duration / system.delta_t);
   int num_downsampled_steps = int(num_steps / system.downsample);
 
-  // accepts float, double, or long double
-  float mean = 0;
-  float std_dev = sqrt(0.5);
-  std::normal_distribution<float> distribution(0., std_dev);
+  // accepts num_type, double, or long double
+  num_type mean = 0;
+  num_type std_dev = sqrt(0.5);
+  std::normal_distribution<num_type> distribution(0., std_dev);
 
   // random variables stored here. They are replenished every steps_for_noise steps.
   std::vector<std::vector<comp>> randoms(steps_for_noise, std::vector<comp>(num_noise));
@@ -396,11 +413,11 @@ void run_trajectory(one_system system, int seed, int steps_for_noise){
     if (j == 0)
       get_new_randoms(randoms, steps_for_noise, num_noise, generator, distribution);
     if (k == 0){
-      // std::copy(current_psi.begin(), current_psi.end(), psis[l].begin());
-      // l++; // number of psis recorded
-      show_state(current_psi, system.dimension);
+      std::copy(current_psi.begin(), current_psi.end(), psis[l].begin());
+      l++; // number of psis recorded
+      // show_state(current_psi, system.dimension);
     }
-    take_step(system, randoms[j], current_psi);
+    take_implicit_euler_step(system, randoms[j], current_psi);
   }
 
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
