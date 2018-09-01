@@ -18,7 +18,7 @@ g++ fast_sim.cpp -o fast_sim -std=c++11
 using json = nlohmann::json;
 using namespace std::chrono;
 
-typedef float num_type;
+typedef long double num_type;
 typedef std::string string;
 typedef std::complex<num_type> comp;
 const std::complex<num_type> imag_unit(0.0,1.0);
@@ -82,14 +82,15 @@ typedef struct
 
 } one_system;
 
-// TODO: Write results to file...
-// void write_to_file(string test_file_loc){
-//     // Write to file
-//     std::ofstream myfile;
-//     myfile.open (test_file_loc);
-//     myfile << "Writing this to a file.\n";
-//     myfile.close();
-// }
+void write_to_file(json j, string output_file){
+    // Write to file
+    // std::ofstream myfile;
+    // myfile.open (test_file_loc);
+    // myfile << "Writing this to a file.\n";
+    // myfile.close();
+    std::ofstream o(output_file);
+    o << std::setw(4) << j << std::endl;
+}
 
 void read_from_file(string & test_file_loc, json & j){
   // Read from file
@@ -145,6 +146,40 @@ comp_vec json_to_complex_array(json & j_arr, num_type scaling = 1.){
   return arr;
 }
 
+json complex_array_to_json(comp_vec vec){
+  int size = vec.size();
+  std::vector<num_type> real_part(size);
+  std::vector<num_type> imag_part(size);
+  for(int i=0; i<size; i++){
+    real_part[i] = std::real(vec[i]);
+    imag_part[i] = std::imag(vec[i]);
+  }
+  json j_real(real_part);
+  json j_imag(imag_part);
+  json j_arr;
+  j_arr["real"] = j_real;
+  j_arr["imag"] = j_imag;
+  return j_arr;
+}
+
+json complex_array_to_json(std::vector<comp_vec> vec){
+  json j;
+  int size = vec.size();
+  for(int i=0; i<size; i++){
+    j.push_back(complex_array_to_json(vec[i]));
+  }
+  return j;
+}
+
+json complex_array_to_json(std::vector<std::vector<comp_vec>> vec){
+  json j;
+  int size = vec.size();
+  for(int i=0; i<size; i++){
+    j.push_back(complex_array_to_json(vec[i]));
+  }
+  return j;
+}
+
 void load_diag_operator(std::vector<comp_vec> & diagonals,
                         std::vector<int> & offsets,
                         json & diag_json,
@@ -161,9 +196,9 @@ void load_diag_operator(std::vector<comp_vec> & diagonals,
 }
 
 void load_diag_operator_sequence(std::vector<std::vector<comp_vec>> & diagonals,
-                        std::vector<std::vector<int>> & offsets,
-                        json & diag_json,
-                        num_type scaling=1.){
+                                 std::vector<std::vector<int>> & offsets,
+                                 json & diag_json,
+                                 num_type scaling=1.){
   // Load each set of diagonals and offsets for each in the sequence
   std::vector<comp_vec> diags_entry;
   std::vector<int> offsets_entry;
@@ -338,19 +373,17 @@ void take_euler_step(one_system & system, std::vector<comp> & noise, std::vector
   normalize(current_psi);
 }
 
-void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi, int extra_steps = 1){
 
   std::vector<comp> intermediate_psi (current_psi.size());
-  std::copy(current_psi.begin(), current_psi.end(), intermediate_psi.begin());
-
-  // initial estimate for various structures using current_psi
-  update_structures(system, current_psi);
-  // update intermediate_psi using initial structure estimates
-  update_psi(system, noise, intermediate_psi);
-  // use intermediate_psi to update structures (estimate at next step)
-  update_structures(system, intermediate_psi);
-  // use the estimate from the next step to update current_psi
-  update_psi(system, noise, current_psi);
+  for (int num_step=0; num_step < extra_steps; ++num_step){
+    std::copy(current_psi.begin(), current_psi.end(), intermediate_psi.begin());
+    update_structures(system, intermediate_psi);
+    if (num_step < extra_steps - 1)
+      update_psi(system, noise, intermediate_psi);
+    else
+      update_psi(system, noise, current_psi);
+  }
 
   //TODO: monitor size of psi (when to normalize)
   normalize(current_psi);
@@ -374,7 +407,7 @@ void show_state(comp_vec current_psi, int dimension){
   }
 }
 
-void run_trajectory(one_system system, int seed, int steps_for_noise){
+void run_trajectory(one_system system, int seed, int steps_for_noise, std::vector<std::vector<comp>> * psis){
   // Find dimension...
   system.dimension = system.psi0.size();
 
@@ -396,9 +429,6 @@ void run_trajectory(one_system system, int seed, int steps_for_noise){
   // random variables stored here. They are replenished every steps_for_noise steps.
   std::vector<std::vector<comp>> randoms(steps_for_noise, std::vector<comp>(num_noise));
 
-  // Initialize downsampled states.
-  std::vector<std::vector<comp>> psis(num_downsampled_steps, std::vector<comp>(system.dimension));
-
   std::vector<comp> current_psi = system.psi0;
 
   //////// Main for loop for simulation
@@ -413,11 +443,18 @@ void run_trajectory(one_system system, int seed, int steps_for_noise){
     if (j == 0)
       get_new_randoms(randoms, steps_for_noise, num_noise, generator, distribution);
     if (k == 0){
-      std::copy(current_psi.begin(), current_psi.end(), psis[l].begin());
+      std::copy(current_psi.begin(), current_psi.end(), (*psis)[l].begin());
       l++; // number of psis recorded
-      // show_state(current_psi, system.dimension);
+      show_state(current_psi, system.dimension);
     }
-    take_implicit_euler_step(system, randoms[j], current_psi);
+    if (system.sdeint_method == "ItoEuler")
+      take_euler_step(system, randoms[j], current_psi);
+    else if (system.sdeint_method == "itoImplicitEuler")
+      take_implicit_euler_step(system, randoms[j], current_psi);
+    else{
+      std::cout << "sdeint_method " << system.sdeint_method << " not supported." << std::endl;
+      break;
+    }
   }
 
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
@@ -425,11 +462,11 @@ void run_trajectory(one_system system, int seed, int steps_for_noise){
 
   // show_state(current_psi, system.dimension);
 
-  std::cout << "It took me " << time_span.count() << " seconds." << std::endl;
+  std::cout << "It took me " << time_span.count() << " seconds for " << num_steps << " timsteps." << std::endl;
   std::cout << "Time per step was: " << time_span.count() / num_steps * 1000000 << " micro seconds." << std::endl;
 }
 
-void qsd_one_system(json & j, int steps_for_noise = 10000){
+void qsd_one_system(json & j, string output_file, int steps_for_noise = 10000){
   std::cout << "running qsd for one system ..." << std::endl;
 
   //////// Define sparse matrices as diagonals and extract from JSON.
@@ -472,36 +509,61 @@ void qsd_one_system(json & j, int steps_for_noise = 10000){
   // Generate threads -- one for each trajectory
   std::vector<std::thread> trajectory_threads;
 
+  // total steps, including initial state.
+  int num_steps = int(system.duration / system.delta_t);
+  int num_downsampled_steps = int(num_steps / system.downsample);
+
+  // Generate vectors to store output trajectory psis
+  std::vector<std::vector<std::vector<comp>>> psis_lst(system.ntraj,
+    std::vector<std::vector<comp>>(num_downsampled_steps + 1,
+      std::vector<comp>(system.dimension))
+  );
+
+  std::vector<std::vector<std::vector<comp>> * > psis_ptr_lst;
+  for(int i=0; i< system.ntraj; i++){
+    std::vector<std::vector<comp>> * psis_ptr = &psis_lst[i];
+    psis_ptr_lst.push_back(psis_ptr);
+  }
+
   // Run the various trajectories with each thread.
   for(int i=0; i<system.ntraj; i++){
     int seed = j["seeds"][i];
     std::cout << "Launching trajectory with seed: " << seed << std::endl;
-    trajectory_threads.push_back(std::thread(run_trajectory, system, seed, steps_for_noise));
+    trajectory_threads.push_back(std::thread(run_trajectory, system, seed, steps_for_noise, psis_ptr_lst[i]));
   }
 
   // join all threads
   for(int i=0; i<system.ntraj; i++){
     trajectory_threads[i].join();
   }
+
+  std::cout << "converting output to JSON ... " << std::endl;
+  json j_psis = complex_array_to_json(psis_lst);
+  string s = j_psis.dump();
+  std::cout << "Total size of downsampled data (as string): " << s.length() << std::endl;
+  std::cout << "Successfully converted to JSON ... Writing to file next..." << std::endl;
+  write_to_file(j_psis, output_file);
+
 }
 
-void qsd_two_system(json & j){
+void qsd_two_system(json & j, string output_file, int steps_for_noise = 10000){
   std::cout << "running qsd for two system ..." << std::endl;
 }
 
-void qsd_from_json(json & j){
+void qsd_from_json(json & j, string output_file){
   // call the appropriate qsd simulator based on parameters found in the json.
   int num_systems = get_num_systems(j);
   if (num_systems == 1)
-    qsd_one_system(j);
+    qsd_one_system(j, output_file);
   else if (num_systems == 2)
-    qsd_two_system(j);
+    qsd_two_system(j, output_file);
 }
 
 int main () {
   string json_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json";
+  string output_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json";
   json j;
   read_from_file(json_file, j);
-  qsd_from_json(j);
+  qsd_from_json(j, output_file);
   return 0;
 }

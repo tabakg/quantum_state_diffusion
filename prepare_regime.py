@@ -109,7 +109,7 @@ def make_system_kerr_bistable_regime2(Nfock, drive=True):
     return make_system_kerr(Nfock, params_dict)
 
 def make_system_kerr_bistable_regime_chose_drive(Nfock, which_kerr, drive):
-    """Most custom optionself.
+    """Most custom options.
 
     User can pick between bistable kerr A and B (which_kerr).
 
