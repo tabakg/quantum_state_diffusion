@@ -14,6 +14,13 @@ g++ fast_sim.cpp -o fast_sim -std=c++11
 #include <assert.h>     /* assert */
 #include <chrono>
 #include <complex>      // std::complex
+#include <stdlib.h>     /* exit, EXIT_FAILURE */
+
+#ifdef DEBUG
+#define DEBUG_MSG(str) do { std::cout << str << std::endl; } while( false )
+#else
+#define DEBUG_MSG(str) do { } while ( false )
+#endif
 
 using json = nlohmann::json;
 using namespace std::chrono;
@@ -53,7 +60,6 @@ std::vector<string> inputs_two_systems = {"H1_eff",
 
 typedef struct
 {
-
   // psi0
   comp_vec psi0;
   int dimension;
@@ -248,7 +254,10 @@ void mult_vecs_offset_upper(comp_vec& diag, comp_vec& vec, comp_vec& out, int& o
 
   IMPORTANT: This does not populate the last `offset` components of out for efficiency; they should be zero.
   */
-  transform(diag.begin(), diag.end(), vec.begin()+offset, out.begin(), std::multiplies<comp>() );
+  DEBUG_MSG(std::cout << "offset " << offset << std::endl);
+  DEBUG_MSG(std::cout << "diag.size() " << diag.size() << std::endl);
+
+  transform(diag.begin()+offset, diag.end(), vec.begin()+offset, out.begin(), std::multiplies<comp>() );
 }
 
 void mult_vecs_offset_lower(comp_vec& diag, comp_vec& vec, comp_vec& out, int& offset){
@@ -258,40 +267,44 @@ void mult_vecs_offset_lower(comp_vec& diag, comp_vec& vec, comp_vec& out, int& o
 
   IMPORTANT: This does not populate the first `offset` components of out for efficiency; they should be zero.
   */
-  transform(diag.begin(), diag.end(), vec.begin(), out.begin()+offset, std::multiplies<comp>() );
+  DEBUG_MSG(std::cout << "offset " << offset << std::endl);
+  DEBUG_MSG(std::cout << "diag.size() " << diag.size() << std::endl);
+
+  transform(diag.begin(), diag.end()-offset, vec.begin(), out.begin()+offset, std::multiplies<comp>() );
 }
 
 comp dot(comp z1, comp z2){
   // returns z1.conj() * z2
   num_type a, b, c, d;
-  a = real(z1); b = imag(z1);
-  c = real(z2); d = imag(z2);
+  a = std::real(z1); b = std::imag(z1);
+  c = std::real(z2); d = std::imag(z2);
   return comp(a * c + b * d, a * d - b * c);
 }
 
-void dot_vecs(comp_vec& v1, comp_vec& v2, comp & val){
-  for (int i=0; i<v1.size(); i++){
+comp dot_vecs(comp_vec& v1, comp_vec& v2){
+  comp val(0., 0.);
+  int size = v1.size();
+  for (int i=0; i<size; i++){
     val += dot(v1[i], v2[i]);
   }
+  return val;
 }
 
 comp norm(std::vector<comp> & vec){
-  comp val = 0.;
-  dot_vecs(vec, vec, val);
+  comp val = dot_vecs(vec, vec);
   return sqrt(val);
+}
+
+void normalize(std::vector<comp> & vec, comp total){
+  int size = vec.size();
+  for(int i=0; i<size; i++){
+    vec[i] /= total;
+  }
 }
 
 void normalize(std::vector<comp> & vec){
   comp total = norm(vec);
-  for(int i=0; i<vec.size(); i++){
-    vec[i] /= total;
-  }
-}
-
-void normalize(std::vector<comp> & vec, comp total){
-  for(int i=0; i<vec.size(); i++){
-    vec[i] /= total;
-  }
+  normalize(vec, total);
 }
 
 void update_products(std::vector<int> & offsets,
@@ -327,26 +340,31 @@ void update_products_sequence(std::vector<std::vector<int>> & offsets,
 
 comp expectation_from_vecs(std::vector<comp_vec> & product,
                             comp_vec & current_psi){
-  comp expectation = 0.;
+  comp expectation(0., 0.);
   for (int i=0; i<product.size(); i++){
-    dot_vecs(current_psi, product[i], expectation);
+    expectation += dot_vecs(current_psi, product[i]);
+    DEBUG_MSG(std::cout << "current expectation: " << expectation << std::endl);
   }
   return expectation;
 }
 
-void update_Ls_expectations(comp_vec & current_psi,
-                            std::vector<std::vector<comp_vec>> & products,
-                            std::vector<comp> & expectations){
-  for (int i=0; i<products.size(); i++){
+void update_Ls_expectations(std::vector<std::vector<comp_vec>> & products,
+                            std::vector<comp> & expectations,
+                            comp_vec & current_psi){
+  int size = products.size();
+  for (int i=0; i<size; i++){
+    DEBUG_MSG(std::cout << "old expectations[i]: " << expectations[i] << std::endl);
     expectations[i] = expectation_from_vecs(products[i], current_psi);
+    DEBUG_MSG(std::cout << "new expectations[i]: " << expectations[i] << std::endl);
   }
 }
 
 void update_structures(one_system & system, std::vector<comp> & current_psi){
   // TODO: separate data for positive and negative offsets
+
   update_products(system.H_eff_offsets, system.H_eff_diagonals, current_psi, system.H_eff_diags_x_psi);
   update_products_sequence(system.Ls_offsets, system.Ls_diagonals, current_psi, system.Ls_diags_x_psi);
-  update_Ls_expectations(current_psi, system.Ls_diags_x_psi, system.Ls_expectations);
+  update_Ls_expectations(system.Ls_diags_x_psi, system.Ls_expectations, current_psi);
 }
 
 void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
@@ -357,8 +375,11 @@ void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp
   }
 
   // Add L components, including noise terms
+  comp mult_L_by;
   for (int i=0; i<system.Ls_diags_x_psi.size(); i++){
-    comp mult_L_by = std::conj(system.Ls_expectations[i]) + noise[i];
+    DEBUG_MSG(std::cout << "system.Ls_expectations[i]: " << system.Ls_expectations[i] << std::endl);
+    mult_L_by = std::conj(system.Ls_expectations[i]) + noise[i];
+    DEBUG_MSG(std::cout << "mult_L_by: " << mult_L_by << std::endl);
     for (int j=0; j<system.Ls_diags_x_psi[i].size(); j++){
       // std::cout << norm(noise[i]) / norm(system.Ls_expectations[i]) << std::endl;
       add_second_to_first(current_psi, system.Ls_diags_x_psi[i][j], mult_L_by);
@@ -369,7 +390,6 @@ void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp
 void take_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
   update_structures(system, current_psi);
   update_psi(system, noise, current_psi);
-  //TODO: monitor size of psi (when to normalize)
   normalize(current_psi);
 }
 
@@ -377,15 +397,26 @@ void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, st
 
   std::vector<comp> intermediate_psi (current_psi.size());
   for (int num_step=0; num_step < extra_steps; ++num_step){
+    DEBUG_MSG(std::cout << "current_psi before copying to intermediate: " << current_psi[0] << std::endl);
     std::copy(current_psi.begin(), current_psi.end(), intermediate_psi.begin());
+    DEBUG_MSG(std::cout << "current_psi after copying to intermediate: " << current_psi[0] << std::endl);
+    DEBUG_MSG(std::cout << "intermediate_psi after copying to intermediate: " << intermediate_psi[0] << std::endl);
     update_structures(system, intermediate_psi);
-    if (num_step < extra_steps - 1)
+    DEBUG_MSG(std::cout << "intermediate_psi after updating system: " << intermediate_psi[0] << std::endl);
+    if (num_step < extra_steps - 1){
       update_psi(system, noise, intermediate_psi);
-    else
+      DEBUG_MSG(std::cout << "intermediate_psi after updating intermediate_psi (again): " << intermediate_psi[0] << std::endl);
+    }
+    else{
       update_psi(system, noise, current_psi);
+      DEBUG_MSG(std::cout << "current_psi after updating psi: " << current_psi[0] << std::endl);
+      DEBUG_MSG(std::cout << "\n" << std::endl);
+      if (std::isnan(std::real(current_psi[0]))){
+        std::cout << "Problem: psi has NAN component! Exiting." << std::endl;
+        exit(EXIT_FAILURE);
+      }
+    }
   }
-
-  //TODO: monitor size of psi (when to normalize)
   normalize(current_psi);
 }
 
@@ -445,12 +476,12 @@ void run_trajectory(one_system system, int seed, int steps_for_noise, std::vecto
     if (k == 0){
       std::copy(current_psi.begin(), current_psi.end(), (*psis)[l].begin());
       l++; // number of psis recorded
-      show_state(current_psi, system.dimension);
+      // show_state(current_psi, system.dimension);
     }
     if (system.sdeint_method == "ItoEuler")
       take_euler_step(system, randoms[j], current_psi);
     else if (system.sdeint_method == "itoImplicitEuler")
-      take_implicit_euler_step(system, randoms[j], current_psi);
+      take_implicit_euler_step(system, randoms[j], current_psi, 2);
     else{
       std::cout << "sdeint_method " << system.sdeint_method << " not supported." << std::endl;
       break;
@@ -495,13 +526,24 @@ void qsd_one_system(json & j, string output_file, int steps_for_noise = 10000){
 
   // Initialize other objects useful in the simulation.
   system.H_eff_diags_x_psi = std::vector<comp_vec>(system.H_eff_diagonals.size(),
-                             std::vector<comp>(system.dimension));
+                               std::vector<comp>(system.dimension));
 
   system.Ls_diags_x_psi = std::vector<std::vector<comp_vec>>(system.Ls_diagonals.size());
   for (int i=0; i<system.Ls_diagonals.size(); i++){
     system.Ls_diags_x_psi[i] = std::vector<comp_vec>(system.Ls_diagonals[i].size(),
                                std::vector<comp>(system.dimension));
   }
+
+  /* View inputs to make sure they are initialized correctly */
+  // for (int i=0; i<system.Ls_diags_x_psi.size(); i++){
+  //   for (int j=0; j<system.Ls_diags_x_psi[i].size(); j++){
+  //     for (int k=0; k<system.Ls_diags_x_psi[i][j].size(); k++){
+  //       std::cout << "system.Ls_diags_x_psi[i][j][k] = " << system.Ls_diags_x_psi[i][j][k] << std::endl;
+  //     }
+  //   }
+  // }
+  // exit(EXIT_FAILURE);
+
   system.Ls_expectations = std::vector<comp>(system.Ls_diagonals.size());
 
   //////// Run trajectories
@@ -543,6 +585,7 @@ void qsd_one_system(json & j, string output_file, int steps_for_noise = 10000){
   std::cout << "Total size of downsampled data (as string): " << s.length() << std::endl;
   std::cout << "Successfully converted to JSON ... Writing to file next..." << std::endl;
   write_to_file(j_psis, output_file);
+  std::cout << "Successfully written to file: " << output_file << std::endl;
 
 }
 

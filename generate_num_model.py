@@ -249,3 +249,17 @@ def gen_num_system_two_systems(H1,
 
     with open(json_file_dir, 'w') as outfile:
         json.dump(data, outfile)
+
+if __name__ == "__main__":
+    from prepare_regime import make_system_kerr_bistable
+    H, psi0, Ls, obsq_data, obs = make_system_kerr_bistable(50, drive=True)
+    gen_num_system(H,
+                   psi0,
+                   30,
+                   1e-4,
+                   Ls,
+                   "itoImplicitEuler",
+                   obsq=obsq_data,
+                   downsample=1000,
+                   ntraj=1,
+                   seed=1)
