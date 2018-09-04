@@ -99,7 +99,9 @@ def gen_num_system(H,
     else:
         raise ValueError("Unknown seed type.")
 
-    H_eff = H - 0.5j*sum(L.H*L for L in Ls)
+    ## H_eff is the effective term appearing in the equation of motion
+    ## NOT the effective Hamiltonian
+    H_eff = -1j*H - 0.5*sum(L.H*L for L in Ls)
 
     H_eff_json = sparse_op_to_json(H_eff)
     if Ls:
@@ -203,8 +205,8 @@ def gen_num_system_two_systems(H1,
 
     H1, H2, L1s, L2s = preprocess_operators(H1, H2, L1s, L2s, ops_on_whole_space)
 
-    H1_eff = H1 - 0.5j*sum(L.H*L for L in L1s)
-    H2_eff = H2 - 0.5j*sum(L.H*L for L in L2s)
+    H1_eff = -1j*H1 - 0.5*sum(L.H*L for L in L1s)
+    H2_eff = -1j*H2 - 0.5*sum(L.H*L for L in L2s)
 
     H1_eff_json = sparse_op_to_json(H1_eff)
     H2_eff_json = sparse_op_to_json(H2_eff)
@@ -251,15 +253,16 @@ def gen_num_system_two_systems(H1,
         json.dump(data, outfile)
 
 if __name__ == "__main__":
-    from prepare_regime import make_system_kerr_bistable
-    H, psi0, Ls, obsq_data, obs = make_system_kerr_bistable(50, drive=True)
+    from prepare_regime import make_system_kerr_bistable_regime_chose_drive
+    H, psi0, Ls, obsq_data, obs = make_system_kerr_bistable_regime_chose_drive(50, 'A', 21.75)
     gen_num_system(H,
                    psi0,
-                   30,
-                   1e-4,
+                   3,
+                   1e-5,
                    Ls,
                    "itoImplicitEuler",
+                   # "ItoEuler",
                    obsq=obsq_data,
                    downsample=1000,
-                   ntraj=1,
+                   ntraj=8,
                    seed=1)

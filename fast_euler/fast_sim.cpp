@@ -25,7 +25,7 @@ g++ fast_sim.cpp -o fast_sim -std=c++11
 using json = nlohmann::json;
 using namespace std::chrono;
 
-typedef long double num_type;
+typedef double num_type;
 typedef std::string string;
 typedef std::complex<num_type> comp;
 const std::complex<num_type> imag_unit(0.0,1.0);
@@ -252,7 +252,7 @@ void mult_vecs_offset_upper(comp_vec& diag, comp_vec& vec, comp_vec& out, int& o
 
   Should be equivalent to multiplying a sparse matrix with offset upper diagonal.
 
-  IMPORTANT: This does not populate the last `offset` components of out for efficiency; they should be zero.
+  IMPORTANT: This adds values to existing "out" vector; may have to zero them first.
   */
   DEBUG_MSG(std::cout << "offset " << offset << std::endl);
   DEBUG_MSG(std::cout << "diag.size() " << diag.size() << std::endl);
@@ -265,7 +265,7 @@ void mult_vecs_offset_lower(comp_vec& diag, comp_vec& vec, comp_vec& out, int& o
 
   Should be equivalent to multiplying a sparse matrix with offset lower diagonal.
 
-  IMPORTANT: This does not populate the first `offset` components of out for efficiency; they should be zero.
+  IMPORTANT: This adds values to existing "out" vector; may have to zero them first.
   */
   DEBUG_MSG(std::cout << "offset " << offset << std::endl);
   DEBUG_MSG(std::cout << "diag.size() " << diag.size() << std::endl);
@@ -312,6 +312,7 @@ void update_products(std::vector<int> & offsets,
                      comp_vec & current_psi,
                      std::vector<comp_vec> & products){
   for (int i=0; i<offsets.size(); i++){
+    std::fill(products[i].begin(), products[i].end(), comp(0., 0.));
     int offset = offsets[i];
     if (offset >= 0){
       mult_vecs_offset_upper(diags[i],
@@ -346,6 +347,25 @@ comp expectation_from_vecs(std::vector<comp_vec> & product,
     DEBUG_MSG(std::cout << "current expectation: " << expectation << std::endl);
   }
   return expectation;
+}
+
+std::vector<comp> expectations_from_diags(std::vector<std::vector<comp_vec>> & diags,
+                            std::vector<std::vector<int>> & offsets,
+                            comp_vec psi){
+  int num_operators = diags.size();
+  int dimension = psi.size();
+  std::vector<std::vector<comp_vec>> products(num_operators);
+  for (int i=0; i<num_operators; i++){
+    products[i] = std::vector<comp_vec>(diags[i].size(),
+      std::vector<comp>(dimension));
+  }
+
+  std::vector<comp> expectations(num_operators);
+  update_products_sequence(offsets, diags, psi, products);
+  for (int i=0; i<num_operators; i++){
+    expectations[i] += expectation_from_vecs(products[i], psi);
+  }
+  return expectations;
 }
 
 void update_Ls_expectations(std::vector<std::vector<comp_vec>> & products,
@@ -393,10 +413,10 @@ void take_euler_step(one_system & system, std::vector<comp> & noise, std::vector
   normalize(current_psi);
 }
 
-void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi, int extra_steps = 1){
+void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi, int extra_steps = 2){
 
   std::vector<comp> intermediate_psi (current_psi.size());
-  for (int num_step=0; num_step < extra_steps; ++num_step){
+  for (int num_step=0; num_step < extra_steps; num_step++){
     DEBUG_MSG(std::cout << "current_psi before copying to intermediate: " << current_psi[0] << std::endl);
     std::copy(current_psi.begin(), current_psi.end(), intermediate_psi.begin());
     DEBUG_MSG(std::cout << "current_psi after copying to intermediate: " << current_psi[0] << std::endl);
@@ -438,7 +458,9 @@ void show_state(comp_vec current_psi, int dimension){
   }
 }
 
-void run_trajectory(one_system system, int seed, int steps_for_noise, std::vector<std::vector<comp>> * psis){
+void run_trajectory(one_system system, int seed, int steps_for_noise,
+                    std::vector<std::vector<comp>> * psis,
+                    std::vector<std::vector<comp>> * expects){
   // Find dimension...
   system.dimension = system.psi0.size();
 
@@ -494,10 +516,15 @@ void run_trajectory(one_system system, int seed, int steps_for_noise, std::vecto
   // show_state(current_psi, system.dimension);
 
   std::cout << "It took me " << time_span.count() << " seconds for " << num_steps << " timsteps." << std::endl;
+  for (int l=0; l<(*psis).size(); l++){
+    (*expects)[l] = expectations_from_diags(system.obsq_diagonals,
+                                            system.obsq_offsets,
+                                            (*psis)[l]);
+  }
   std::cout << "Time per step was: " << time_span.count() / num_steps * 1000000 << " micro seconds." << std::endl;
 }
 
-void qsd_one_system(json & j, string output_file, int steps_for_noise = 10000){
+void qsd_one_system(json & j, string output_file_psis, string output_file_expects, int steps_for_noise = 10000){
   std::cout << "running qsd for one system ..." << std::endl;
 
   //////// Define sparse matrices as diagonals and extract from JSON.
@@ -561,17 +588,23 @@ void qsd_one_system(json & j, string output_file, int steps_for_noise = 10000){
       std::vector<comp>(system.dimension))
   );
 
+  // Generate vectors to store output expectation values
+  std::vector<std::vector<std::vector<comp>>> expects_lst(system.ntraj,
+    std::vector<std::vector<comp>>(num_downsampled_steps + 1,
+      std::vector<comp>(system.obsq_diagonals.size()))
+  );
+
   std::vector<std::vector<std::vector<comp>> * > psis_ptr_lst;
+  std::vector<std::vector<std::vector<comp>> * > expects_ptr_lst;
   for(int i=0; i< system.ntraj; i++){
     std::vector<std::vector<comp>> * psis_ptr = &psis_lst[i];
+    std::vector<std::vector<comp>> * expects_ptr = &expects_lst[i];
     psis_ptr_lst.push_back(psis_ptr);
-  }
-
-  // Run the various trajectories with each thread.
-  for(int i=0; i<system.ntraj; i++){
+    expects_ptr_lst.push_back(expects_ptr);
     int seed = j["seeds"][i];
     std::cout << "Launching trajectory with seed: " << seed << std::endl;
-    trajectory_threads.push_back(std::thread(run_trajectory, system, seed, steps_for_noise, psis_ptr_lst[i]));
+    // Run the various trajectories with each thread.
+    trajectory_threads.push_back(std::thread(run_trajectory, system, seed, steps_for_noise, psis_ptr, expects_ptr));
   }
 
   // join all threads
@@ -581,32 +614,37 @@ void qsd_one_system(json & j, string output_file, int steps_for_noise = 10000){
 
   std::cout << "converting output to JSON ... " << std::endl;
   json j_psis = complex_array_to_json(psis_lst);
-  string s = j_psis.dump();
-  std::cout << "Total size of downsampled data (as string): " << s.length() << std::endl;
+  json j_expects = complex_array_to_json(expects_lst);
+  string s_psis = j_psis.dump();
+  string s_expects = j_expects.dump();
+  std::cout << "Total size of downsampled psis data (as string): " << s_psis.length() << std::endl;
   std::cout << "Successfully converted to JSON ... Writing to file next..." << std::endl;
-  write_to_file(j_psis, output_file);
-  std::cout << "Successfully written to file: " << output_file << std::endl;
+  write_to_file(j_psis, output_file_psis);
+  std::cout << "Successfully written psis to file: " << output_file_psis << std::endl;
+  write_to_file(j_expects, output_file_expects);
+  std::cout << "Successfully written expects to file: " << output_file_expects << std::endl;
 
 }
 
-void qsd_two_system(json & j, string output_file, int steps_for_noise = 10000){
+void qsd_two_system(json & j, string output_file_psis, string output_file_expects, int steps_for_noise = 10000){
   std::cout << "running qsd for two system ..." << std::endl;
 }
 
-void qsd_from_json(json & j, string output_file){
+void qsd_from_json(json & j, string output_file_psis, string output_file_expects){
   // call the appropriate qsd simulator based on parameters found in the json.
   int num_systems = get_num_systems(j);
   if (num_systems == 1)
-    qsd_one_system(j, output_file);
+    qsd_one_system(j, output_file_psis, output_file_expects);
   else if (num_systems == 2)
-    qsd_two_system(j, output_file);
+    qsd_two_system(j, output_file_psis,  output_file_expects);
 }
 
 int main () {
   string json_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json";
-  string output_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json";
+  string output_file_psis="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json";
+  string output_file_expects="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output_expects.json";
   json j;
   read_from_file(json_file, j);
-  qsd_from_json(j, output_file);
+  qsd_from_json(j, output_file_psis, output_file_expects);
   return 0;
 }
