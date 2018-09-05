@@ -7,7 +7,7 @@ g++ fast_sim.cpp -o fast_sim -std=c++11
 // basic file operations
 #include <iostream>
 #include <fstream>
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 #include <random>
 #include <thread>
 #include <math.h>       /* sqrt */
@@ -15,6 +15,7 @@ g++ fast_sim.cpp -o fast_sim -std=c++11
 #include <chrono>
 #include <complex>      // std::complex
 #include <stdlib.h>     /* exit, EXIT_FAILURE */
+#include <iomanip>
 
 #ifdef DEBUG
 #define DEBUG_MSG(str) do { std::cout << str << std::endl; } while( false )
@@ -69,7 +70,7 @@ typedef struct
   num_type delta_t;
   string sdeint_method;
   int downsample;
-  int ntraj;
+  int traj_num;
 
   // H_eff
   std::vector<comp_vec> H_eff_diagonals;
@@ -89,11 +90,6 @@ typedef struct
 } one_system;
 
 void write_to_file(json j, string output_file){
-    // Write to file
-    // std::ofstream myfile;
-    // myfile.open (test_file_loc);
-    // myfile << "Writing this to a file.\n";
-    // myfile.close();
     std::ofstream o(output_file);
     o << std::setw(4) << j << std::endl;
 }
@@ -258,6 +254,7 @@ void mult_vecs_offset_upper(comp_vec& diag, comp_vec& vec, comp_vec& out, int& o
   DEBUG_MSG(std::cout << "diag.size() " << diag.size() << std::endl);
 
   transform(diag.begin()+offset, diag.end(), vec.begin()+offset, out.begin(), std::multiplies<comp>() );
+  // transform(diag.begin(), diag.end()-offset, vec.begin()+offset, out.begin(), std::multiplies<comp>() );
 }
 
 void mult_vecs_offset_lower(comp_vec& diag, comp_vec& vec, comp_vec& out, int& offset){
@@ -271,6 +268,7 @@ void mult_vecs_offset_lower(comp_vec& diag, comp_vec& vec, comp_vec& out, int& o
   DEBUG_MSG(std::cout << "diag.size() " << diag.size() << std::endl);
 
   transform(diag.begin(), diag.end()-offset, vec.begin(), out.begin()+offset, std::multiplies<comp>() );
+  // transform(diag.begin()+offset, diag.end(), vec.begin(), out.begin()+offset, std::multiplies<comp>() );
 }
 
 comp dot(comp z1, comp z2){
@@ -458,9 +456,12 @@ void show_state(comp_vec current_psi, int dimension){
   }
 }
 
-void run_trajectory(one_system system, int seed, int steps_for_noise,
+void run_trajectory(one_system * system_ptr, int seed, int steps_for_noise,
                     std::vector<std::vector<comp>> * psis,
                     std::vector<std::vector<comp>> * expects){
+
+  one_system system = *system_ptr;
+
   // Find dimension...
   system.dimension = system.psi0.size();
 
@@ -503,7 +504,7 @@ void run_trajectory(one_system system, int seed, int steps_for_noise,
     if (system.sdeint_method == "ItoEuler")
       take_euler_step(system, randoms[j], current_psi);
     else if (system.sdeint_method == "itoImplicitEuler")
-      take_implicit_euler_step(system, randoms[j], current_psi, 2);
+      take_implicit_euler_step(system, randoms[j], current_psi, 3);
     else{
       std::cout << "sdeint_method " << system.sdeint_method << " not supported." << std::endl;
       break;
@@ -524,12 +525,10 @@ void run_trajectory(one_system system, int seed, int steps_for_noise,
   std::cout << "Time per step was: " << time_span.count() / num_steps * 1000000 << " micro seconds." << std::endl;
 }
 
-void qsd_one_system(json & j, string output_file_psis, string output_file_expects, int steps_for_noise = 10000){
-  std::cout << "running qsd for one system ..." << std::endl;
-
-  //////// Define sparse matrices as diagonals and extract from JSON.
+one_system make_system_one(json & j, int traj_num){
 
   one_system system;
+  //////// Define sparse matrices as diagonals and extract from JSON.
 
   // Other items to retrieve from JSON
 
@@ -542,8 +541,6 @@ void qsd_one_system(json & j, string output_file_psis, string output_file_expect
   system.delta_t = j["delta_t"];
   system.sdeint_method = j["sdeint_method"];
   system.downsample = j["downsample"];
-  system.ntraj = j["ntraj"];
-  assert(j["seeds"].size() == system.ntraj);
 
   // Loading various operators as diagonals
   // TODO: scale operators by delta_t (and then noise terms too!)
@@ -561,54 +558,69 @@ void qsd_one_system(json & j, string output_file_psis, string output_file_expect
                                std::vector<comp>(system.dimension));
   }
 
-  /* View inputs to make sure they are initialized correctly */
-  // for (int i=0; i<system.Ls_diags_x_psi.size(); i++){
-  //   for (int j=0; j<system.Ls_diags_x_psi[i].size(); j++){
-  //     for (int k=0; k<system.Ls_diags_x_psi[i][j].size(); k++){
-  //       std::cout << "system.Ls_diags_x_psi[i][j][k] = " << system.Ls_diags_x_psi[i][j][k] << std::endl;
-  //     }
-  //   }
-  // }
-  // exit(EXIT_FAILURE);
-
   system.Ls_expectations = std::vector<comp>(system.Ls_diagonals.size());
+  return system;
+}
+
+std::vector<one_system> make_systems_one(json & j){
+  int ntraj = j["ntraj"];
+  assert(j["seeds"].size() == ntraj);
+
+  std::vector<one_system> systems(ntraj);
+  for (int i=0; i<ntraj; i++){
+    systems[i] = make_system_one(j, i);
+  }
+  return systems;
+}
+
+void qsd_one_system(json & j, string output_file_psis, string output_file_expects, int steps_for_noise = 10000){
+  std::cout << "running qsd for one system ..." << std::endl;
 
   //////// Run trajectories
+
+  // Generate systems -- one for each trajectory
+  std::vector<one_system> systems = make_systems_one(j);
+
+  std::cout << "Generated systems from JSON ... " << std::endl;
+  int ntraj = j["ntraj"];
 
   // Generate threads -- one for each trajectory
   std::vector<std::thread> trajectory_threads;
 
+  std::cout << "delta_t: " << systems[0].delta_t << std::endl;
+
   // total steps, including initial state.
-  int num_steps = int(system.duration / system.delta_t);
-  int num_downsampled_steps = int(num_steps / system.downsample);
+  int num_steps = int(systems[0].duration / systems[0].delta_t);
+  int num_downsampled_steps = int(num_steps / systems[0].downsample);
 
   // Generate vectors to store output trajectory psis
-  std::vector<std::vector<std::vector<comp>>> psis_lst(system.ntraj,
+  std::vector<std::vector<std::vector<comp>>> psis_lst(ntraj,
     std::vector<std::vector<comp>>(num_downsampled_steps + 1,
-      std::vector<comp>(system.dimension))
+      std::vector<comp>(systems[0].dimension))
   );
 
   // Generate vectors to store output expectation values
-  std::vector<std::vector<std::vector<comp>>> expects_lst(system.ntraj,
+  std::vector<std::vector<std::vector<comp>>> expects_lst(ntraj,
     std::vector<std::vector<comp>>(num_downsampled_steps + 1,
-      std::vector<comp>(system.obsq_diagonals.size()))
+      std::vector<comp>(systems[0].obsq_diagonals.size()))
   );
 
-  std::vector<std::vector<std::vector<comp>> * > psis_ptr_lst;
-  std::vector<std::vector<std::vector<comp>> * > expects_ptr_lst;
-  for(int i=0; i< system.ntraj; i++){
+  // std::vector<std::vector<std::vector<comp>> * > psis_ptr_lst;
+  // std::vector<std::vector<std::vector<comp>> * > expects_ptr_lst;
+  for(int i=0; i< ntraj; i++){
+    one_system * system_ptr = &systems[i];
     std::vector<std::vector<comp>> * psis_ptr = &psis_lst[i];
     std::vector<std::vector<comp>> * expects_ptr = &expects_lst[i];
-    psis_ptr_lst.push_back(psis_ptr);
-    expects_ptr_lst.push_back(expects_ptr);
+    // psis_ptr_lst.push_back(psis_ptr);
+    // expects_ptr_lst.push_back(expects_ptr);
     int seed = j["seeds"][i];
     std::cout << "Launching trajectory with seed: " << seed << std::endl;
     // Run the various trajectories with each thread.
-    trajectory_threads.push_back(std::thread(run_trajectory, system, seed, steps_for_noise, psis_ptr, expects_ptr));
+    trajectory_threads.push_back(std::thread(run_trajectory, system_ptr, seed, steps_for_noise, psis_ptr, expects_ptr));
   }
 
   // join all threads
-  for(int i=0; i<system.ntraj; i++){
+  for(int i=0; i<ntraj; i++){
     trajectory_threads[i].join();
   }
 
