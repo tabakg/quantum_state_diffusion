@@ -271,5 +271,5 @@ if __name__ == "__main__":
                    # "ItoEuler",
                    obsq=obsq_data,
                    downsample=100,
-                   ntraj=4,
+                   ntraj=1,
                    seed=1)
