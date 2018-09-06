@@ -89,8 +89,40 @@ typedef struct{
 
   // obsq
   std::vector<diag_op> obsq;
-
 } one_system;
+
+typedef struct{
+  // psi0
+  comp_vec psi0;
+  int dimension;
+
+  // Other parameters
+  num_type duration;
+  num_type delta_t;
+  string sdeint_method;
+  int downsample;
+  int traj_num;
+
+  // H_eff
+  diag_op H_eff;
+  std::vector<comp_vec> H_eff_x_psi;
+
+  // Ls
+  std::vector<diag_op> Ls;
+  std::vector<std::vector<comp_vec>> Ls_diags_x_psi;
+  std::vector<comp> Ls_expectations;
+
+  // other operators for transmission
+  diag_op L2_dag;
+  std::vector<comp_vec> L2_dag_x_psi;
+
+  diag_op L2_dag_L1;
+  std::vector<comp_vec> L2_dag_L1_x_psi;
+
+  // obsq
+  std::vector<diag_op> obsq;
+} two_system;
+
 
 void write_to_file(json j, string output_file){
     std::ofstream o(output_file);
@@ -304,29 +336,6 @@ void normalize(std::vector<comp> & vec){
   normalize(vec, total);
 }
 
-void update_products(std::vector<int> & offsets,
-                     std::vector<comp_vec> & diags,
-                     comp_vec & current_psi,
-                     std::vector<comp_vec> & products){
-  for (int i=0; i<offsets.size(); i++){
-    std::fill(products[i].begin(), products[i].end(), comp(0., 0.));
-    int offset = offsets[i];
-    if (offset >= 0){
-      mult_vecs_offset_upper(diags[i],
-                             current_psi,
-                             products[i],
-                             offset);
-    }
-    else{
-      offset *= -1;
-      mult_vecs_offset_lower(diags[i],
-                             current_psi,
-                             products[i],
-                             offset);
-    }
-  }
-}
-
 void update_products(diag_op & op,
                      comp_vec & current_psi,
                      std::vector<comp_vec> & products){
@@ -346,16 +355,6 @@ void update_products(diag_op & op,
                              products[i],
                              offset);
     }
-  }
-}
-
-// old
-void update_products_sequence(std::vector<std::vector<int>> & offsets,
-                              std::vector<std::vector<comp_vec>> & diags,
-                              comp_vec & current_psi,
-                              std::vector<std::vector<comp_vec>> & products){
-  for (int i=0; i<offsets.size(); i++){
-    update_products(offsets[i], diags[i], current_psi, products[i]);
   }
 }
 

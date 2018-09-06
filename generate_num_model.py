@@ -259,7 +259,7 @@ if __name__ == "__main__":
     # drive = 25.0
     # drive = 30.8
     # drive = 35.0
-    duration = 10.
+    duration = 0.2
     delta_t = 1e-5
     H, psi0, Ls, obsq_data, obs = make_system_kerr_bistable_regime_chose_drive(dim, 'A', drive)
     gen_num_system(H,
