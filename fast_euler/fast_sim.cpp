@@ -59,8 +59,14 @@ std::vector<string> inputs_two_systems = {"H1_eff",
                                           "eps",
                                           "n"};
 
-typedef struct
-{
+// struct to hold operators, represented by diagonals and offsets.
+typedef struct{
+  std::vector<comp_vec> diags;
+  std::vector<int> offsets;
+  int size; // number of diagonals
+} diag_op;
+
+typedef struct{
   // psi0
   comp_vec psi0;
   int dimension;
@@ -73,19 +79,16 @@ typedef struct
   int traj_num;
 
   // H_eff
-  std::vector<comp_vec> H_eff_diagonals;
-  std::vector<int> H_eff_offsets;
-  std::vector<comp_vec> H_eff_diags_x_psi;
+  diag_op H_eff;
+  std::vector<comp_vec> H_eff_x_psi;
 
   // Ls
-  std::vector<std::vector<comp_vec>> Ls_diagonals;
-  std::vector<std::vector<int>> Ls_offsets;
+  std::vector<diag_op> Ls;
   std::vector<std::vector<comp_vec>> Ls_diags_x_psi;
   std::vector<comp> Ls_expectations;
 
   // obsq
-  std::vector<std::vector<comp_vec>> obsq_diagonals;
-  std::vector<std::vector<int>> obsq_offsets;
+  std::vector<diag_op> obsq;
 
 } one_system;
 
@@ -182,32 +185,28 @@ json complex_array_to_json(std::vector<std::vector<comp_vec>> vec){
   return j;
 }
 
-void load_diag_operator(std::vector<comp_vec> & diagonals,
-                        std::vector<int> & offsets,
-                        json & diag_json,
-                        num_type scaling=1.){
+void load_diag_operator(diag_op & op, json & diag_json, num_type scaling=1.){
   // Loads from JSON with fields "data" and "offsets" representing a sparse matrix.
   json json_data = diag_json["data"];
-  for (int i = 0; i < json_data.size(); i++){
-    diagonals.push_back(json_to_complex_array(json_data[i], scaling=scaling));
-  }
   json json_offsets = diag_json["offsets"];
-  for (int i = 0; i < json_offsets.size(); i++){
-    offsets.push_back(json_offsets[i]);
+  int size = json_data.size();
+  assert(size == json_offsets.size());
+
+  op.size = size;
+  for (int i = 0; i < size; i++){
+    op.diags.push_back(json_to_complex_array(json_data[i], scaling=scaling));
+    op.offsets.push_back(json_offsets[i]);
   }
 }
 
-void load_diag_operator_sequence(std::vector<std::vector<comp_vec>> & diagonals,
-                                 std::vector<std::vector<int>> & offsets,
+void load_diag_operator_sequence(std::vector<diag_op> & Ls,
                                  json & diag_json,
                                  num_type scaling=1.){
   // Load each set of diagonals and offsets for each in the sequence
-  std::vector<comp_vec> diags_entry;
-  std::vector<int> offsets_entry;
-  for (int i = 0; i < diag_json.size(); i++){
-    load_diag_operator(diags_entry, offsets_entry, diag_json[i], scaling=scaling);
-    diagonals.push_back(diags_entry);
-    offsets.push_back(offsets_entry);
+  int size = diag_json.size();
+  Ls = std::vector<diag_op>(size);
+  for (int i = 0; i < size; i++){
+    load_diag_operator(Ls[i], diag_json[i], scaling=scaling);
   }
 }
 
@@ -328,12 +327,43 @@ void update_products(std::vector<int> & offsets,
   }
 }
 
+void update_products(diag_op & op,
+                     comp_vec & current_psi,
+                     std::vector<comp_vec> & products){
+  for (int i=0; i<products.size(); i++){
+    std::fill(products[i].begin(), products[i].end(), comp(0., 0.));
+    int offset = op.offsets[i];
+    if (offset >= 0){
+      mult_vecs_offset_upper(op.diags[i],
+                             current_psi,
+                             products[i],
+                             offset);
+    }
+    else{
+      offset *= -1;
+      mult_vecs_offset_lower(op.diags[i],
+                             current_psi,
+                             products[i],
+                             offset);
+    }
+  }
+}
+
+// old
 void update_products_sequence(std::vector<std::vector<int>> & offsets,
                               std::vector<std::vector<comp_vec>> & diags,
                               comp_vec & current_psi,
                               std::vector<std::vector<comp_vec>> & products){
   for (int i=0; i<offsets.size(); i++){
     update_products(offsets[i], diags[i], current_psi, products[i]);
+  }
+}
+
+void update_products_sequence(std::vector<diag_op> & ops,
+                              comp_vec & current_psi,
+                              std::vector<std::vector<comp_vec>> & products){
+  for (int i=0; i<ops.size(); i++){
+    update_products(ops[i], current_psi, products[i]);
   }
 }
 
@@ -347,19 +377,17 @@ comp expectation_from_vecs(std::vector<comp_vec> & product,
   return expectation;
 }
 
-std::vector<comp> expectations_from_diags(std::vector<std::vector<comp_vec>> & diags,
-                            std::vector<std::vector<int>> & offsets,
-                            comp_vec psi){
-  int num_operators = diags.size();
+std::vector<comp> expectations_from_diags(std::vector<diag_op> ops, comp_vec psi){
+  int num_operators = ops.size();
   int dimension = psi.size();
   std::vector<std::vector<comp_vec>> products(num_operators);
   for (int i=0; i<num_operators; i++){
-    products[i] = std::vector<comp_vec>(diags[i].size(),
+    products[i] = std::vector<comp_vec>(ops[i].size,
       std::vector<comp>(dimension));
   }
 
   std::vector<comp> expectations(num_operators);
-  update_products_sequence(offsets, diags, psi, products);
+  update_products_sequence(ops, psi, products);
   for (int i=0; i<num_operators; i++){
     expectations[i] += expectation_from_vecs(products[i], psi);
   }
@@ -380,16 +408,16 @@ void update_Ls_expectations(std::vector<std::vector<comp_vec>> & products,
 void update_structures(one_system & system, std::vector<comp> & current_psi){
   // TODO: separate data for positive and negative offsets
 
-  update_products(system.H_eff_offsets, system.H_eff_diagonals, current_psi, system.H_eff_diags_x_psi);
-  update_products_sequence(system.Ls_offsets, system.Ls_diagonals, current_psi, system.Ls_diags_x_psi);
+  update_products(system.H_eff, current_psi, system.H_eff_x_psi);
+  update_products_sequence(system.Ls, current_psi, system.Ls_diags_x_psi);
   update_Ls_expectations(system.Ls_diags_x_psi, system.Ls_expectations, current_psi);
 }
 
 void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
 
   // Add Hamiltonian component
-  for (int i=0; i<system.H_eff_diags_x_psi.size(); i++){
-    add_second_to_first(current_psi, system.H_eff_diags_x_psi[i]);
+  for (int i=0; i<system.H_eff.size; i++){
+    add_second_to_first(current_psi, system.H_eff_x_psi[i]);
   }
 
   // Add L components, including noise terms
@@ -472,7 +500,7 @@ void run_trajectory(one_system * system_ptr, int seed, int steps_for_noise,
   std::default_random_engine generator(seed);
 
   // Number of complex noise terms.
-  int num_noise = system.Ls_diagonals.size();
+  int num_noise = system.Ls.size();
 
   // total steps, including initial state.
   int num_steps = int(system.duration / system.delta_t);
@@ -521,9 +549,7 @@ void run_trajectory(one_system * system_ptr, int seed, int steps_for_noise,
 
   std::cout << "It took me " << time_span.count() << " seconds for " << num_steps << " timsteps." << std::endl;
   for (int l=0; l<(*psis).size(); l++){
-    (*expects)[l] = expectations_from_diags(system.obsq_diagonals,
-                                            system.obsq_offsets,
-                                            (*psis)[l]);
+    (*expects)[l] = expectations_from_diags(system.obsq, (*psis)[l]);
   }
   std::cout << "Time per step was: " << time_span.count() / num_steps * 1000000 << " micro seconds." << std::endl;
 }
@@ -546,26 +572,26 @@ one_system make_system_one(json & j, int traj_num){
   system.downsample = j["downsample"];
 
   // Loading various operators as diagonals
-  // TODO: scale operators by delta_t (and then noise terms too!)
-  load_diag_operator(system.H_eff_diagonals, system.H_eff_offsets, j["H_eff"], system.delta_t);
-  load_diag_operator_sequence(system.Ls_diagonals, system.Ls_offsets, j["Ls"], sqrt(system.delta_t));
-  load_diag_operator_sequence(system.obsq_diagonals, system.obsq_offsets, j["obsq"]);
+  load_diag_operator(system.H_eff, j["H_eff"], system.delta_t);
+  load_diag_operator_sequence(system.Ls, j["Ls"], sqrt(system.delta_t));
+  load_diag_operator_sequence(system.obsq, j["obsq"]);
 
   // Initialize other objects useful in the simulation.
-  system.H_eff_diags_x_psi = std::vector<comp_vec>(system.H_eff_diagonals.size(),
-                               std::vector<comp>(system.dimension));
+  system.H_eff_x_psi = std::vector<comp_vec>(system.H_eff.size,
+                         std::vector<comp>(system.dimension));
 
-  system.Ls_diags_x_psi = std::vector<std::vector<comp_vec>>(system.Ls_diagonals.size());
-  for (int i=0; i<system.Ls_diagonals.size(); i++){
-    system.Ls_diags_x_psi[i] = std::vector<comp_vec>(system.Ls_diagonals[i].size(),
+  system.Ls_diags_x_psi = std::vector<std::vector<comp_vec>>(system.Ls.size());
+  for (int i=0; i<system.Ls.size(); i++){
+    system.Ls_diags_x_psi[i] = std::vector<comp_vec>(system.Ls[i].diags.size(),
                                std::vector<comp>(system.dimension));
   }
 
-  system.Ls_expectations = std::vector<comp>(system.Ls_diagonals.size());
+  system.Ls_expectations = std::vector<comp>(system.Ls.size());
   return system;
 }
 
 std::vector<one_system> make_systems_one(json & j){
+
   int ntraj = j["ntraj"];
   assert(j["seeds"].size() == ntraj);
 
@@ -603,21 +629,15 @@ void qsd_one_system(json & j, string output_file_psis, string output_file_expect
     std::vector<std::vector<comp>>(num_downsampled_steps + 1,
       std::vector<comp>(systems[0].dimension))
   );
-
   // Generate vectors to store output expectation values
   std::vector<std::vector<std::vector<comp>>> expects_lst(ntraj,
     std::vector<std::vector<comp>>(num_downsampled_steps + 1,
-      std::vector<comp>(systems[0].obsq_diagonals.size()))
-  );
+      std::vector<comp>(systems[0].obsq.size())));
 
-  // std::vector<std::vector<std::vector<comp>> * > psis_ptr_lst;
-  // std::vector<std::vector<std::vector<comp>> * > expects_ptr_lst;
   for(int i=0; i< ntraj; i++){
     one_system * system_ptr = &systems[i];
     std::vector<std::vector<comp>> * psis_ptr = &psis_lst[i];
     std::vector<std::vector<comp>> * expects_ptr = &expects_lst[i];
-    // psis_ptr_lst.push_back(psis_ptr);
-    // expects_ptr_lst.push_back(expects_ptr);
     int seed = j["seeds"][i];
     std::cout << "Launching trajectory with seed: " << seed << std::endl;
     // Run the various trajectories with each thread.
