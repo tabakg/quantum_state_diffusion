@@ -395,47 +395,49 @@ void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp
   // Add L components, including noise terms
   comp mult_L_by;
   for (int i=0; i<system.Ls_diags_x_psi.size(); i++){
-    DEBUG_MSG(std::cout << "system.Ls_expectations[i]: " << system.Ls_expectations[i] << std::endl);
     mult_L_by = std::conj(system.Ls_expectations[i]) + noise[i];
-    DEBUG_MSG(std::cout << "mult_L_by: " << mult_L_by << std::endl);
     for (int j=0; j<system.Ls_diags_x_psi[i].size(); j++){
-      // std::cout << norm(noise[i]) / norm(system.Ls_expectations[i]) << std::endl;
       add_second_to_first(current_psi, system.Ls_diags_x_psi[i][j], mult_L_by);
     }
   }
 }
 
-void take_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
-  update_structures(system, current_psi);
+void update_and_normalize_psi(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
   update_psi(system, noise, current_psi);
   normalize(current_psi);
 }
 
-void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi, int extra_steps = 2){
+void take_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+  update_structures(system, current_psi);
+  update_and_normalize_psi(system, noise, current_psi);
+}
 
-  std::vector<comp> intermediate_psi (current_psi.size());
-  for (int num_step=0; num_step < extra_steps; num_step++){
-    DEBUG_MSG(std::cout << "current_psi before copying to intermediate: " << current_psi[0] << std::endl);
-    std::copy(current_psi.begin(), current_psi.end(), intermediate_psi.begin());
-    DEBUG_MSG(std::cout << "current_psi after copying to intermediate: " << current_psi[0] << std::endl);
-    DEBUG_MSG(std::cout << "intermediate_psi after copying to intermediate: " << intermediate_psi[0] << std::endl);
-    update_structures(system, intermediate_psi);
-    DEBUG_MSG(std::cout << "intermediate_psi after updating system: " << intermediate_psi[0] << std::endl);
-    if (num_step < extra_steps - 1){
-      update_psi(system, noise, intermediate_psi);
-      DEBUG_MSG(std::cout << "intermediate_psi after updating intermediate_psi (again): " << intermediate_psi[0] << std::endl);
-    }
-    else{
-      update_psi(system, noise, current_psi);
-      DEBUG_MSG(std::cout << "current_psi after updating psi: " << current_psi[0] << std::endl);
-      DEBUG_MSG(std::cout << "\n" << std::endl);
-      if (std::isnan(std::real(current_psi[0]))){
-        std::cout << "Problem: psi has NAN component! Exiting." << std::endl;
-        exit(EXIT_FAILURE);
-      }
-    }
+void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi, int steps){
+  if (steps == 1){
+    take_euler_step(system, noise, current_psi);
+    return;
   }
-  normalize(current_psi);
+
+  /*    If steps >= 2   */
+
+  // temporary state next_psi
+  comp_vec next_psi(system.dimension);
+  std::copy(current_psi.begin(), current_psi.end(), next_psi.begin());
+
+  // First step: update system structures and next_psi using current_psi
+  update_structures(system, current_psi);
+  update_and_normalize_psi(system, noise, next_psi);
+
+  // Intermediate steps: update system structures and next_psi using next_psi
+  for (int i=0; i<steps-2; i++){
+    update_structures(system, next_psi);
+    std::copy(current_psi.begin(), current_psi.end(), next_psi.begin());
+    update_and_normalize_psi(system, noise, next_psi);
+  }
+
+  // Last step: update system structures and current_psi using next_psi
+  update_structures(system, next_psi);
+  update_and_normalize_psi(system, noise, current_psi);
 }
 
 
@@ -458,7 +460,8 @@ void show_state(comp_vec current_psi, int dimension){
 
 void run_trajectory(one_system * system_ptr, int seed, int steps_for_noise,
                     std::vector<std::vector<comp>> * psis,
-                    std::vector<std::vector<comp>> * expects){
+                    std::vector<std::vector<comp>> * expects,
+                    int implicit_euler_steps=3){
 
   one_system system = *system_ptr;
 
@@ -504,7 +507,7 @@ void run_trajectory(one_system * system_ptr, int seed, int steps_for_noise,
     if (system.sdeint_method == "ItoEuler")
       take_euler_step(system, randoms[j], current_psi);
     else if (system.sdeint_method == "itoImplicitEuler")
-      take_implicit_euler_step(system, randoms[j], current_psi, 3);
+      take_implicit_euler_step(system, randoms[j], current_psi, implicit_euler_steps);
     else{
       std::cout << "sdeint_method " << system.sdeint_method << " not supported." << std::endl;
       break;
@@ -573,7 +576,7 @@ std::vector<one_system> make_systems_one(json & j){
   return systems;
 }
 
-void qsd_one_system(json & j, string output_file_psis, string output_file_expects, int steps_for_noise = 10000){
+void qsd_one_system(json & j, string output_file_psis, string output_file_expects, int implicit_euler_steps, int steps_for_noise = 10000){
   std::cout << "running qsd for one system ..." << std::endl;
 
   //////// Run trajectories
@@ -588,6 +591,8 @@ void qsd_one_system(json & j, string output_file_psis, string output_file_expect
   std::vector<std::thread> trajectory_threads;
 
   std::cout << "delta_t: " << systems[0].delta_t << std::endl;
+  std::cout << "duration: " << systems[0].duration << std::endl;
+  std::cout << "sdeint_method: " << j["sdeint_method"] << std::endl;
 
   // total steps, including initial state.
   int num_steps = int(systems[0].duration / systems[0].delta_t);
@@ -616,7 +621,7 @@ void qsd_one_system(json & j, string output_file_psis, string output_file_expect
     int seed = j["seeds"][i];
     std::cout << "Launching trajectory with seed: " << seed << std::endl;
     // Run the various trajectories with each thread.
-    trajectory_threads.push_back(std::thread(run_trajectory, system_ptr, seed, steps_for_noise, psis_ptr, expects_ptr));
+    trajectory_threads.push_back(std::thread(run_trajectory, system_ptr, seed, steps_for_noise, psis_ptr, expects_ptr, implicit_euler_steps));
   }
 
   // join all threads
@@ -638,25 +643,26 @@ void qsd_one_system(json & j, string output_file_psis, string output_file_expect
 
 }
 
-void qsd_two_system(json & j, string output_file_psis, string output_file_expects, int steps_for_noise = 10000){
+void qsd_two_system(json & j, string output_file_psis, string output_file_expects, int implicit_euler_steps, int steps_for_noise = 10000){
   std::cout << "running qsd for two system ..." << std::endl;
 }
 
-void qsd_from_json(json & j, string output_file_psis, string output_file_expects){
+void qsd_from_json(json & j, string output_file_psis, string output_file_expects, int implicit_euler_steps){
   // call the appropriate qsd simulator based on parameters found in the json.
   int num_systems = get_num_systems(j);
   if (num_systems == 1)
-    qsd_one_system(j, output_file_psis, output_file_expects);
+    qsd_one_system(j, output_file_psis, output_file_expects, implicit_euler_steps);
   else if (num_systems == 2)
-    qsd_two_system(j, output_file_psis,  output_file_expects);
+    qsd_two_system(j, output_file_psis,  output_file_expects, implicit_euler_steps);
 }
 
 int main () {
   string json_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json";
   string output_file_psis="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json";
   string output_file_expects="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output_expects.json";
+  int implicit_euler_steps =  2;
   json j;
   read_from_file(json_file, j);
-  qsd_from_json(j, output_file_psis, output_file_expects);
+  qsd_from_json(j, output_file_psis, output_file_expects, implicit_euler_steps);
   return 0;
 }

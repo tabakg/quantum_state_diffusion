@@ -255,10 +255,11 @@ def gen_num_system_two_systems(H1,
 if __name__ == "__main__":
     from prepare_regime import make_system_kerr_bistable_regime_chose_drive
     dim = 50
-    # drive = 21.75
+    drive = 21.75
+    # drive = 25.0
     # drive = 30.8
-    drive = 35.0
-    duration = 30.
+    # drive = 35.0
+    duration = 10.
     delta_t = 1e-5
     H, psi0, Ls, obsq_data, obs = make_system_kerr_bistable_regime_chose_drive(dim, 'A', drive)
     gen_num_system(H,
@@ -266,7 +267,7 @@ if __name__ == "__main__":
                    duration,
                    delta_t,
                    Ls,
-                   "ItoEuler",
+                   "itoImplicitEuler",
                    # "ItoEuler",
                    obsq=obsq_data,
                    downsample=100,
