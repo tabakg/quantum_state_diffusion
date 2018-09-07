@@ -140,6 +140,7 @@ def gen_num_system_two_systems(H1,
                                R,
                                eps,
                                n,
+                               lambd,
                                sdeint_method,
                                trans_phase=None,
                                obsq=None,
@@ -173,6 +174,8 @@ def gen_num_system_two_systems(H1,
             state
         n: float
             Scalar to multiply the measurement feedback noise
+        lambd: float
+            Kalman coefficient for classical transmission filtering.
         sdeint_method (Optional) SDE solver method:
             Which SDE solver to use. Default is sdeint.itoSRI2.
         obsq (optional): list of NxN csr matrices, dtype = complex128
@@ -205,20 +208,21 @@ def gen_num_system_two_systems(H1,
 
     H1, H2, L1s, L2s = preprocess_operators(H1, H2, L1s, L2s, ops_on_whole_space)
 
-    H1_eff = -1j*H1 - 0.5*sum(L.H*L for L in L1s)
-    H2_eff = -1j*H2 - 0.5*sum(L.H*L for L in L2s)
+    H_eff = -1j*H1 - 0.5*sum(L.H*L for L in L1s) -1j*H2 - 0.5*sum(L.H*L for L in L2s)
 
-    H1_eff_json = sparse_op_to_json(H1_eff)
-    H2_eff_json = sparse_op_to_json(H2_eff)
+    H_eff_json = sparse_op_to_json(H_eff)
 
-    if L1s:
-        L1s_json = [sparse_op_to_json(L) for L in L1s]
+    Ls = [L1s[0], L2s[0]] + L1s[1:] + L2s[1:]
+
+    L2_dag = L2s[0].H
+
+    L2_diag_L1 = L2s[0].H  * L1s[0]
+
+    if Ls:
+        Ls_json = [sparse_op_to_json(L) for L in Ls]
     else:
-        L1s_json = []
-    if L2s:
-        L2s_json = [sparse_op_to_json(L) for L in L2s]
-    else:
-        L2s_json = []
+        Ls_json = []
+
     if obsq:
         obsq_json = [sparse_op_to_json(ob) for ob in obsq]
     else:
@@ -232,10 +236,10 @@ def gen_num_system_two_systems(H1,
         eps *= trans_phase
         T *= trans_phase
 
-    data = {"H1_eff": H1_eff_json,
-            "H2_eff": H2_eff_json,
-            "L1s": L1s_json,
-            "L2s": L2s_json,
+    data = {"H_eff": H_eff_json,
+            "Ls": Ls_json,
+            "L2_dag": L2_dag,
+            "L2_dag_L1": L2_dag_L1,
             "psi0": psi0_list,
             "duration": duration,
             "delta_t": delta_t,
@@ -247,7 +251,8 @@ def gen_num_system_two_systems(H1,
             "R": R,
             "T": T,
             "eps": eps,
-            "n": n}
+            "n": n,
+            "lambda": lambd}
 
     with open(json_file_dir, 'w') as outfile:
         json.dump(data, outfile)
