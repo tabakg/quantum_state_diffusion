@@ -36,7 +36,8 @@ typedef std::vector<comp> comp_vec;
 The following vectors inputs_one_system and inputs_two_systems are
 used to check the input type to make sure it is compatible. */
 
-std::vector<string> inputs_one_system = {"H_eff",
+std::vector<string> inputs_one_system = {"num_systems",
+                                         "H_eff",
                                          "Ls",
                                          "psi0",
                                          "duration",
@@ -47,7 +48,8 @@ std::vector<string> inputs_one_system = {"H_eff",
                                          "ntraj",
                                          "seeds"};
 
-std::vector<string> inputs_two_systems = {"H_eff",
+std::vector<string> inputs_two_systems = {"num_systems",
+                                          "H_eff",
                                           "Ls",
                                           "L2_dag",
                                           "L2_dag_L1",
@@ -63,7 +65,7 @@ std::vector<string> inputs_two_systems = {"H_eff",
                                           "T",
                                           "eps",
                                           "n",
-                                          "lambd"};
+                                          "lambda"};
 
 // struct to hold operators, represented by diagonals and offsets.
 // This is used for H_eff (multiplied by -i) and the Ls.
@@ -178,6 +180,7 @@ bool matches_inputs(json & j, std::vector<string> inputs){
   for(int i=0; i < std::min(inputs.size(), j.size()); i++){
     entry = inputs[i];
     if (j.find(entry) == j.end()) {
+      std::cout << "Non-matching entry found: " << entry << std::endl;
       return false;
     }
   }
@@ -188,9 +191,9 @@ bool matches_inputs(json & j, std::vector<string> inputs){
 int get_num_systems(json & j){
   // figures out the number of systems encoded based on what the inputs are.
   // Assumes that there are no inputs matching BOTH one and two systems.
-  if (matches_inputs(j, inputs_one_system))
+  if (j["num_systems"] == 1 and matches_inputs(j, inputs_one_system))
     return 1;
-  else if (matches_inputs(j, inputs_two_systems))
+  else if (j["num_systems"] == 2 and matches_inputs(j, inputs_two_systems))
     return 2;
   else return -1;
 }

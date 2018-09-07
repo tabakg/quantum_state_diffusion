@@ -115,7 +115,8 @@ def gen_num_system(H,
 
     psi0_list = split_complex(list(np.asarray(psi0.todense()).T[0]))
 
-    data = {"H_eff": H_eff_json,
+    data = {"num_systems": 1,
+            "H_eff": H_eff_json,
             "Ls": Ls_json,
             "psi0": psi0_list,
             "duration": duration,
@@ -209,19 +210,16 @@ def gen_num_system_two_systems(H1,
     H1, H2, L1s, L2s = preprocess_operators(H1, H2, L1s, L2s, ops_on_whole_space)
 
     H_eff = -1j*H1 - 0.5*sum(L.H*L for L in L1s) -1j*H2 - 0.5*sum(L.H*L for L in L2s)
-
     H_eff_json = sparse_op_to_json(H_eff)
 
     Ls = [L1s[0], L2s[0]] + L1s[1:] + L2s[1:]
+    Ls_json = [sparse_op_to_json(L) for L in Ls]
 
     L2_dag = L2s[0].H
+    L2_dag_json = sparse_op_to_json(L2_dag)
 
-    L2_diag_L1 = L2s[0].H  * L1s[0]
-
-    if Ls:
-        Ls_json = [sparse_op_to_json(L) for L in Ls]
-    else:
-        Ls_json = []
+    L2_dag_L1 = L2s[0].H  * L1s[0]
+    L2_dag_L1_json = sparse_op_to_json(L2_dag_L1)
 
     if obsq:
         obsq_json = [sparse_op_to_json(ob) for ob in obsq]
@@ -236,10 +234,11 @@ def gen_num_system_two_systems(H1,
         eps *= trans_phase
         T *= trans_phase
 
-    data = {"H_eff": H_eff_json,
+    data = {"num_systems": 2,
+            "H_eff": H_eff_json,
             "Ls": Ls_json,
-            "L2_dag": L2_dag,
-            "L2_dag_L1": L2_dag_L1,
+            "L2_dag": L2_dag_json,
+            "L2_dag_L1": L2_dag_L1_json,
             "psi0": psi0_list,
             "duration": duration,
             "delta_t": delta_t,
@@ -257,15 +256,20 @@ def gen_num_system_two_systems(H1,
     with open(json_file_dir, 'w') as outfile:
         json.dump(data, outfile)
 
-if __name__ == "__main__":
+def make_one_system_example():
+
     from prepare_regime import make_system_kerr_bistable_regime_chose_drive
+
+    ## generic parameters
     dim = 50
     drive = 21.75
-    # drive = 25.0
-    # drive = 30.8
-    # drive = 35.0
     duration = 0.2
     delta_t = 1e-5
+    sdeint_method = "itoImplicitEuler"
+    downsample=100
+    ntraj = 1
+    seed = 1
+
     H, psi0, Ls, obsq_data, obs = make_system_kerr_bistable_regime_chose_drive(dim, 'A', drive)
     gen_num_system(H,
                    psi0,
@@ -273,8 +277,52 @@ if __name__ == "__main__":
                    delta_t,
                    Ls,
                    "itoImplicitEuler",
-                   # "ItoEuler",
                    obsq=obsq_data,
-                   downsample=100,
-                   ntraj=1,
-                   seed=1)
+                   downsample=downsample,
+                   ntraj=ntraj,
+                   seed=seed)
+
+def make_two_system_example():
+    from prepare_regime import make_system_kerr_bistable_regime_chose_drive_two_systems
+
+    ## generic parameters
+    dim = 50
+    drive = 21.75
+    duration = 0.2
+    delta_t = 1e-5
+    sdeint_method = "itoImplicitEuler"
+    downsample=100
+    ntraj = 1
+    seed = 1
+
+    ## two-system specific parameters
+    R = 0.0
+    eps = 1.0
+    n = 1.0
+    lambd = 0.0
+
+    H1, H2, psi0, L1s, L2s, obsq_data_kron, _ = make_system_kerr_bistable_regime_chose_drive_two_systems(50, 'A', drive, drive_second_system=False)
+    gen_num_system_two_systems(H1,
+                               H2,
+                               psi0,
+                               duration,
+                               delta_t,
+                               L1s,
+                               L2s,
+                               R,
+                               eps,
+                               n,
+                               lambd,
+                               sdeint_method,
+                               trans_phase=None,
+                               obsq=obsq_data_kron,
+                               downsample=downsample,
+                               ops_on_whole_space = False,
+                               ntraj=ntraj,
+                               seed=seed)
+
+
+if __name__ == "__main__":
+
+    # make_one_system_example()
+    make_two_system_example()
