@@ -316,6 +316,21 @@ void add_second_to_first(comp_vec& in_1, comp_vec& in_2, comp scalar){
 }
 
 
+void add_second_to_first(comp_vec& vec, std::vector<comp_vec> & vecs_to_add){
+  // Adds every vector in vecs_to_add to vec
+  for (int i=0; i < vecs_to_add.size(); i++){
+    add_second_to_first(vec, vecs_to_add[i]);
+  }
+}
+
+void add_second_to_first(comp_vec& vec, std::vector<comp_vec> & vecs_to_add, comp scalar){
+  // Adds every vector in vecs_to_add to vec (multiplied by scalar)
+  for (int i=0; i < vecs_to_add.size(); i++){
+    add_second_to_first(vec, vecs_to_add[i], scalar);
+  }
+}
+
+
 void mult_vecs_offset_upper(comp_vec& diag, comp_vec& vec, comp_vec& out, int& offset){
   /* Multiplies arrays with an offset.
 
@@ -529,38 +544,53 @@ void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp
   // IMPORTANT: this is NOT idempotent.
 
   // Add Hamiltonian component
-  for (int i=0; i<system.H_eff.size; i++){
-    add_second_to_first(current_psi, system.H_eff_x_psi[i]);
-  }
+  add_second_to_first(current_psi, system.H_eff_x_psi);
 
   // Add L components, including noise terms
   comp mult_L_by;
   for (int i=0; i<system.Ls_diags_x_psi.size(); i++){
     mult_L_by = std::conj(system.Ls_expectations[i]) + noise[i];
-    for (int j=0; j<system.Ls_diags_x_psi[i].size(); j++){
-      add_second_to_first(current_psi, system.Ls_diags_x_psi[i][j], mult_L_by);
-    }
+    add_second_to_first(current_psi, system.Ls_diags_x_psi[i], mult_L_by);
   }
 }
 
 
-//TODO: Implement the correct update psi for two systems
 void update_psi(two_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
   // Update psi for one system using the system state and noise.
   // IMPORTANT: this is NOT idempotent.
 
   // Add Hamiltonian component
-  for (int i=0; i<system.H_eff.size; i++){
-    add_second_to_first(current_psi, system.H_eff_x_psi[i]);
-  }
+  add_second_to_first(current_psi, system.H_eff_x_psi);
 
-  // Add L components, including noise terms
-  comp mult_L_by;
-  for (int i=0; i<system.Ls_diags_x_psi.size(); i++){
-    mult_L_by = std::conj(system.Ls_expectations[i]) + noise[i];
-    for (int j=0; j<system.Ls_diags_x_psi[i].size(); j++){
-      add_second_to_first(current_psi, system.Ls_diags_x_psi[i][j], mult_L_by);
-    }
+  comp coefficient; // coefficient for each term to add to psi
+
+  // Add L1 component
+  coefficient = (std::conj(system.Ls_expectations[0])
+                + system.T * std::conj(system.Ls_expectations[1])
+                + system.T * noise[0]
+                + system.R * std::conj(noise[1]));
+  add_second_to_first(current_psi, system.Ls_diags_x_psi[0], coefficient);
+
+  // Add L2 component
+  coefficient = (std::conj(system.Ls_expectations[1])
+                + system.T * std::conj(system.Ls_expectations[0])
+                + noise[0]
+                + system.eps * std::conj(system.alpha_t_filtered));
+  add_second_to_first(current_psi, system.Ls_diags_x_psi[1], coefficient);
+
+  // Add L2_dag component
+  coefficient = - system.eps * system.alpha_t_filtered;
+  add_second_to_first(current_psi, system.L2_dag_x_psi, coefficient);
+
+  // Add L2_dag_L1 component
+  coefficient = - system.T;
+  add_second_to_first(current_psi, system.L2_dag_L1_x_psi, coefficient);
+
+
+  // Add L components, including noise terms, for other Ls (except first two)
+  for (int i=2; i<system.Ls_diags_x_psi.size(); i++){
+    coefficient = std::conj(system.Ls_expectations[i]) + noise[i];
+    add_second_to_first(current_psi, system.Ls_diags_x_psi[i], coefficient);
   }
 }
 
