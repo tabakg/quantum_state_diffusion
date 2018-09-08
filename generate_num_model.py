@@ -299,7 +299,7 @@ def make_two_system_example():
     R = 0.0
     eps = 1.0
     n = 1.0
-    lambd = 0.0
+    lambd = 0.99
 
     H1, H2, psi0, L1s, L2s, obsq_data_kron, _ = make_system_kerr_bistable_regime_chose_drive_two_systems(50, 'A', drive, drive_second_system=False)
     gen_num_system_two_systems(H1,
@@ -324,5 +324,5 @@ def make_two_system_example():
 
 if __name__ == "__main__":
 
-    # make_one_system_example()
-    make_two_system_example()
+    make_one_system_example()
+    # make_two_system_example()

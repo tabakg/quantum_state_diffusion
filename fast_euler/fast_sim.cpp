@@ -1,7 +1,10 @@
 
 /*
 g++ fast_sim.cpp -o fast_sim -std=c++11
-./fast_sim
+spec_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json"
+psis_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json"
+expects_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output_expects.json"
+./fast_sim "$spec_file" "$psis_out" "$expects_out"
 */
 
 // basic file operations
@@ -170,7 +173,7 @@ void read_from_file(string & input_file, json & j){
     }
     myfile.close();
   }
-  else std::cout << "Unable to open file";
+  else std::cout << "Unable to open file: " << input_file << std::endl;
 }
 
 
@@ -586,7 +589,6 @@ void update_psi(two_system & system, std::vector<comp> & noise, std::vector<comp
   coefficient = - system.T;
   add_second_to_first(current_psi, system.L2_dag_L1_x_psi, coefficient);
 
-
   // Add L components, including noise terms, for other Ls (except first two)
   for (int i=2; i<system.Ls_diags_x_psi.size(); i++){
     coefficient = std::conj(system.Ls_expectations[i]) + noise[i];
@@ -965,10 +967,10 @@ void show_state(comp_vec current_psi, int dimension){
 }
 
 
-int main () {
-  string json_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json";
-  string output_file_psis="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json";
-  string output_file_expects="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output_expects.json";
+int main (int argc, char* argv[]) {
+  string json_file = argv[1];
+  string output_file_psis = argv[2];
+  string output_file_expects = argv[3];
   int implicit_euler_steps =  2;
   json j;
   read_from_file(json_file, j);
