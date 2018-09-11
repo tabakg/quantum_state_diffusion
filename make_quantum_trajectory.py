@@ -178,7 +178,6 @@ def get_parser():
                         type=float,
                         default=1.)
 
-
     # trans_phase
     parser.add_argument("--trans_phase",
                         dest='trans_phase',
@@ -205,7 +204,7 @@ def get_parser():
                         help="Turn off logging (debug and info)",
                         default=False)
 
-    # Does the user want to quiet output?
+    # Specify output directory
     parser.add_argument("--output_dir",
                         dest='outdir',
                         type=str,
