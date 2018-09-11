@@ -289,7 +289,7 @@ def make_two_system_example():
     dim = 10
     drive = 21.75
     duration = 0.2
-    delta_t = 1e-7
+    delta_t = 1e-5
     sdeint_method = "itoImplicitEuler"
     downsample=100
     ntraj = 1

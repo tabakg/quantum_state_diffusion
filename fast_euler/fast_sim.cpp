@@ -1,15 +1,22 @@
 
 /*
 
-// Worked on Mac:
+// Worked on Mac (used on my local machine):
 g++ fast_sim.cpp -o fast_sim -std=c++11
 
-// Worked on Linux:
+spec_file="/scratch/users/tabakg/qsd_output/json_spec/tmp_file.json"
+psis_out="/scratch/users/tabakg/qsd_output/fast_out/tmp_output.json"
+expects_out="/scratch/users/tabakg/qsd_output/fast_out/tmp_output_expects.json"
+
+./fast_sim "$spec_file" "$psis_out" "$expects_out"
+
+// Worked on Linux (i.e. Sherlock):
 g++ fast_sim.cpp -o fast_sim -std=c++11 -pthread
 
 spec_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json"
 psis_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json"
 expects_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output_expects.json"
+
 ./fast_sim "$spec_file" "$psis_out" "$expects_out"
 */
 
@@ -708,7 +715,7 @@ void run_trajectory(system_type * system_ptr, int seed, int steps_for_noise,
 
   // total steps, including initial state.
   int num_steps = int(system.duration / system.delta_t);
-  int num_downsampled_steps = int(num_steps / system.downsample);
+  int num_downsampled_steps = int(system.duration / (system.delta_t * system.downsample));
 
   // accepts num_type, double, or long double
   num_type mean = 0;
@@ -723,6 +730,8 @@ void run_trajectory(system_type * system_ptr, int seed, int steps_for_noise,
   //////// Main for loop for simulation
   high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
+  std::copy(current_psi.begin(), current_psi.end(), (*psis)[0].begin());
+
   for(int i=0, j=0, k=0, l=0; i<num_steps; i++, j++, k++){
     // Get new noise terms as we go
     if (j == steps_for_noise)
@@ -731,11 +740,6 @@ void run_trajectory(system_type * system_ptr, int seed, int steps_for_noise,
       k = 0;
     if (j == 0)
       get_new_randoms(randoms, steps_for_noise, num_noise, generator, distribution);
-    if (k == 0){
-      std::copy(current_psi.begin(), current_psi.end(), (*psis)[l].begin());
-      l++; // number of psis recorded
-      // show_state(current_psi, system.dimension);
-    }
     if (system.sdeint_method == "ItoEuler")
       take_euler_step(system, randoms[j], current_psi);
     else if (system.sdeint_method == "itoImplicitEuler")
@@ -743,6 +747,11 @@ void run_trajectory(system_type * system_ptr, int seed, int steps_for_noise,
     else{
       std::cout << "sdeint_method " << system.sdeint_method << " not supported." << std::endl;
       break;
+    }
+    if (k == 0){
+      l++; // number of psis recorded
+      std::copy(current_psi.begin(), current_psi.end(), (*psis)[l].begin());
+      // show_state(current_psi, system.dimension);
     }
   }
 
