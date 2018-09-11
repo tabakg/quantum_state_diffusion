@@ -15,6 +15,7 @@ import numpy.linalg as la
 from scipy import sparse
 import json
 import os
+import sys
 import argparse
 from utils import preprocess_operators
 import logging
@@ -22,6 +23,10 @@ import logging
 from quantum_state_diffusion import (
     qsd_solve,
     qsd_solve_two_systems
+)
+
+from utils import (
+    print_params
 )
 
 from prepare_regime import (
@@ -374,7 +379,7 @@ def get_parser():
 
     # Delta T
     parser.add_argument("--delta_t",
-                        dest='deltat',
+                        dest='delta_t',
                         help="Parameter delta_t",
                         type=float,
                         default=2e-3)
@@ -414,14 +419,14 @@ def get_parser():
 
     # Nfock_a
     parser.add_argument("--Nfock_a",
-                        dest='nfocka',
+                        dest='Nfock_a',
                         help="Number of fock states in each cavity",
                         type=int,
                         default=50)
 
     # Nfock_j
     parser.add_argument("--Nfock_j",
-                        dest='nfockj',
+                        dest='Nfock_j',
                         help="Dimensionality of atom states"
                              "Used only if using a Jaynes-Cummings model",
                         type=int,
@@ -479,7 +484,7 @@ def get_parser():
     ################################################################################
 
     parser.add_argument("--output_dir",
-                        dest='outdir',
+                        dest='output_dir',
                         type=str,
                         help="Output file location (full path).",
                         default="/scratch/users/tabakg/qsd_output/json_spec/")
@@ -491,6 +496,7 @@ def get_parser():
                         action="store_true",
                         help="Turn off logging (debug and info)",
                         default=False)
+    return parser
 
 def main():
     parser = get_parser()
@@ -510,14 +516,21 @@ def main():
     # make_two_system_example(json_file_dir)
     ############################################################################
 
-    # Set up commands from parser
+    ############################################################################
+    #### Set up commands from parser
+    #### Sample call from command line
+    # python /scratch/users/tabakg/qsd_dev/generate_num_model.py --output_dir '/scratch/users/tabakg/qsd_output/json_spec/' --Nfock_a 30 \
+    # --seed 1 --regime 'kerr_bistableA21.75' --num_systems 2 --delta_t 1e-05 --duration 0.2 --downsample 100 \
+    # --sdeint_method_name 'itoImplicitEuler' --R 1.0 --eps 1.0 --noise_amp 1.0 --lambda 0.999
+    ############################################################################
+
     params = dict()
     ntraj = params['Ntraj'] = args.ntraj
     seed = params['seed'] = args.seed
     duration = params['duration'] = args.duration
-    delta_t = params['delta_t'] = args.deltat
-    Nfock_a = params['Nfock_a'] = args.nfocka
-    Nfock_j = params['Nfock_j'] = args.nfockj
+    delta_t = params['delta_t'] = args.delta_t
+    Nfock_a = params['Nfock_a'] = args.Nfock_a
+    Nfock_j = params['Nfock_j'] = args.Nfock_j
     downsample = params['downsample'] = args.downsample
     Regime = params['regime'] = args.regime
     num_systems = params['num_systems'] = args.num_systems
@@ -562,17 +575,7 @@ def main():
     json_file_name = "json_spec_" + param_str + ".json"
 
     json_file_dir=os.path.join(args.output_dir, json_file_name)
-
-    ## Names of files and output
-    if args.outdir is None:
-        outdir = os.getcwd()
-    else:
-        outdir = args.outdir
-
-    try:
-        os.stat(outdir)
-    except:
-        os.mkdir(outdir)
+    print("output directory is ", json_file_dir)
 
     tspan = np.arange(0,duration,delta_t)
 
@@ -643,7 +646,7 @@ def main():
                                    L2s,
                                    R,
                                    eps,
-                                   n,
+                                   noise_amp,
                                    lambd,
                                    sdeint_method_name,
                                    trans_phase=None,
@@ -656,3 +659,6 @@ def main():
     else: ## num_systems not equal to 1 or 2
         logging.error("Unknown num_systems, %s, or not implemented yet.", num_systems)
         raise ValueError("Unknown num_systems, or not implemented yet.")
+
+if __name__ == '__main__':
+    main()
