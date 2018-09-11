@@ -559,7 +559,7 @@ def main():
                                  trans_phase,
                                  drive_second_system)
 
-    json_file_name = "json_spec_" + param_str ".json"
+    json_file_name = "json_spec_" + param_str + ".json"
 
     json_file_dir=os.path.join(args.output_dir, json_file_name)
 
