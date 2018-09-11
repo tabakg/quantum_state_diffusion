@@ -40,7 +40,7 @@ min_EPSs = [0. if r ==0. else (1-np.sqrt(1-r**2))/r for r in Rs]
 EPSs = {R: np.linspace(m,2*m,5) for R,m in zip(Rs,min_EPSs)}
 DRIVES=False, ##Driving second system?
 
-method = 'itoImplicitEuler'
+sdeint_method_name = 'itoImplicitEuler'
 
 for num_systems in num_systems_arr:
     for delta_t in delta_ts:
