@@ -1,6 +1,12 @@
 
 /*
+
+// Worked on Mac:
 g++ fast_sim.cpp -o fast_sim -std=c++11
+
+// Worked on Linux:
+g++ fast_sim.cpp -o fast_sim -std=c++11 -pthread
+
 spec_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json"
 psis_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json"
 expects_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output_expects.json"
@@ -362,7 +368,7 @@ void mult_vecs_offset_lower(comp_vec& diag, comp_vec& vec, comp_vec& out, int& o
 }
 
 
-comp dot(comp z1, comp z2){
+comp dot(comp& z1, comp& z2){
   // returns z1.conj() * z2, NOT standard Euclidean dot product.
   num_type a, b, c, d;
   a = std::real(z1); b = std::imag(z1);
@@ -382,14 +388,14 @@ comp dot_vecs(comp_vec& v1, comp_vec& v2){
 }
 
 
-comp norm(std::vector<comp> & vec){
+comp norm(std::vector<comp>& vec){
   // Computes norm of vec.
   comp val = dot_vecs(vec, vec);
   return sqrt(val);
 }
 
 
-void normalize(std::vector<comp> & vec, comp total){
+void normalize(std::vector<comp>& vec, comp& total){
   // normalize vector vec by total
   int size = vec.size();
   for(int i=0; i<size; i++){
@@ -398,16 +404,16 @@ void normalize(std::vector<comp> & vec, comp total){
 }
 
 
-void normalize(std::vector<comp> & vec){
+void normalize(std::vector<comp>& vec){
   // normalize vector vec by its norm.
   comp total = norm(vec);
   normalize(vec, total);
 }
 
 
-void update_products(diag_op & op,
-                     comp_vec & current_psi,
-                     std::vector<comp_vec> & products){
+void update_products(diag_op& op,
+                     comp_vec& current_psi,
+                     std::vector<comp_vec>& products){
   // Compute the products of each operator diagonal multiplied by psi,
   // taking into account the offset of each diagonal.
   // Should be idempotent.
@@ -434,9 +440,9 @@ void update_products(diag_op & op,
 }
 
 
-void update_products_sequence(std::vector<diag_op> & ops,
-                              comp_vec & current_psi,
-                              std::vector<std::vector<comp_vec>> & products){
+void update_products_sequence(std::vector<diag_op>& ops,
+                              comp_vec& current_psi,
+                              std::vector<std::vector<comp_vec>>& products){
   // Applies update_products to a sequence of operators and products.
   // Should be idempotent.
 
@@ -446,8 +452,8 @@ void update_products_sequence(std::vector<diag_op> & ops,
 }
 
 
-comp expectation_from_vecs(std::vector<comp_vec> & product,
-                            comp_vec & current_psi){
+comp expectation_from_vecs(std::vector<comp_vec>& product,
+                            comp_vec& current_psi){
   // Computes the expectation values <psi|op|psi> from the products op|psi>
   // and the vector psi.
   // Should be idempotent.
@@ -461,9 +467,9 @@ comp expectation_from_vecs(std::vector<comp_vec> & product,
 }
 
 
-void update_expects_from_vecs(std::vector<std::vector<comp_vec>> & products,
-                              std::vector<comp> & expectations,
-                              comp_vec & current_psi){
+void update_expects_from_vecs(std::vector<std::vector<comp_vec>>& products,
+                              std::vector<comp>& expectations,
+                              comp_vec& current_psi){
   // Update the expectation values <psi|op|psi> from the products op|psi>
   // for a sequence of operators.
   // Should be idempotent.
@@ -477,7 +483,7 @@ void update_expects_from_vecs(std::vector<std::vector<comp_vec>> & products,
 }
 
 
-std::vector<comp> expectations_from_ops(std::vector<diag_op> ops, comp_vec psi){
+std::vector<comp> expectations_from_ops(std::vector<diag_op>& ops, comp_vec& psi){
   // Compute the expectation values <psi|op|psi> for each op in ops,
   // directly from ops and psi.
   // Should be idempotent.
@@ -499,7 +505,7 @@ std::vector<comp> expectations_from_ops(std::vector<diag_op> ops, comp_vec psi){
 }
 
 
-void update_alpha(two_system system, std::vector<comp> & noise){
+void update_alpha(two_system& system, std::vector<comp>& noise){
   // find alpha_t and alpha_t_filtered, but does NOT update alpha_old.
   // should be idempotent.
 
@@ -508,15 +514,15 @@ void update_alpha(two_system system, std::vector<comp> & noise){
 }
 
 
-void step_alpha(two_system system){
+void step_alpha(two_system& system){
   // Update alpha_old to current filtered alpha.
   // Note this is NOT idempotent.
   system.alpha_old = system.alpha_t_filtered;
 }
 
 
-void update_structures(one_system & system,
-                       std::vector<comp> & current_psi){
+void update_structures(one_system& system,
+                       std::vector<comp>& current_psi){
   // Update H_eff * psi and for each L, L*psi and l = <psi|L|psi>
   // Should be idempotent.
 
@@ -526,9 +532,9 @@ void update_structures(one_system & system,
 }
 
 
-void update_structures(two_system & system,
-                       std::vector<comp> & noise,
-                       std::vector<comp> & current_psi){
+void update_structures(two_system& system,
+                       std::vector<comp>& noise,
+                       std::vector<comp>& current_psi){
   // Update H_eff * psi and for each L, L*psi and l = <psi|L|psi>.
   // Also update L2_dag * psi and L2_dag_L1 * psi, and the current alpha.
   // Should be idempotent.
@@ -542,7 +548,7 @@ void update_structures(two_system & system,
 }
 
 
-void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+void update_psi(one_system& system, std::vector<comp>& noise, std::vector<comp>& current_psi){
   // Update psi for one system using the system state and noise.
   // IMPORTANT: this is NOT idempotent.
 
@@ -558,7 +564,7 @@ void update_psi(one_system & system, std::vector<comp> & noise, std::vector<comp
 }
 
 
-void update_psi(two_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+void update_psi(two_system& system, std::vector<comp>& noise, std::vector<comp>& current_psi){
   // Update psi for one system using the system state and noise.
   // IMPORTANT: this is NOT idempotent.
 
@@ -598,21 +604,21 @@ void update_psi(two_system & system, std::vector<comp> & noise, std::vector<comp
 
 
 template<class T>
-void update_and_normalize_psi(T & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+void update_and_normalize_psi(T& system, std::vector<comp>& noise, std::vector<comp>& current_psi){
   // Convenient function to update and normalize psi.
   update_psi(system, noise, current_psi);
   normalize(current_psi);
 }
 
 
-void take_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+void take_euler_step(one_system& system, std::vector<comp>& noise, std::vector<comp>& current_psi){
   // Euler step for one system.
   update_structures(system, current_psi);
   update_and_normalize_psi(system, noise, current_psi);
 }
 
 
-void take_euler_step(two_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi){
+void take_euler_step(two_system& system, std::vector<comp>& noise, std::vector<comp>& current_psi){
   // Euler step for two systems.
   // Unlike the one system case, we have to step alpha in time.
   update_structures(system, noise, current_psi);
@@ -621,7 +627,7 @@ void take_euler_step(two_system & system, std::vector<comp> & noise, std::vector
 }
 
 
-void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi, int steps){
+void take_implicit_euler_step(one_system& system, std::vector<comp>& noise, std::vector<comp>& current_psi, int& steps){
   // Implicit Euler step for one system.
   if (steps == 1){
     take_euler_step(system, noise, current_psi);
@@ -651,7 +657,7 @@ void take_implicit_euler_step(one_system & system, std::vector<comp> & noise, st
 }
 
 
-void take_implicit_euler_step(two_system & system, std::vector<comp> & noise, std::vector<comp> & current_psi, int steps){
+void take_implicit_euler_step(two_system& system, std::vector<comp>& noise, std::vector<comp>& current_psi, int& steps){
   // Implicit Euler step for two systems.
   // This looks similar to the one system case, but there are a few small differences.
   if (steps == 1){
@@ -762,7 +768,7 @@ system_type make_system(json & j, int traj_num){
 
 
 template<>
-one_system make_system<one_system>(json & j, int traj_num){
+one_system make_system<one_system>(json& j, int traj_num){
   // Populate system from JSON file based on trajectory number.
 
   one_system system;
@@ -798,7 +804,7 @@ one_system make_system<one_system>(json & j, int traj_num){
 
 
 template<>
-two_system make_system<two_system>(json & j, int traj_num){
+two_system make_system<two_system>(json& j, int traj_num){
   // Populate system from JSON file based on trajectory number.
 
   two_system system;
@@ -863,7 +869,7 @@ std::vector<system_type> make_systems(json & j){
 
 
 template<class system_type>
-void qsd(json & j, string output_file_psis, string output_file_expects, int implicit_euler_steps, int steps_for_noise = 10000){
+void qsd(json& j, string output_file_psis, string output_file_expects, int implicit_euler_steps, int steps_for_noise = 10000){
   // Main function for simulator.
   // Populates systems from JSON file and launches individual trajectories.
 

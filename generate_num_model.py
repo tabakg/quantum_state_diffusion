@@ -286,10 +286,10 @@ def make_two_system_example():
     from prepare_regime import make_system_kerr_bistable_regime_chose_drive_two_systems
 
     ## generic parameters
-    dim = 50
+    dim = 10
     drive = 21.75
     duration = 0.2
-    delta_t = 1e-5
+    delta_t = 1e-7
     sdeint_method = "itoImplicitEuler"
     downsample=100
     ntraj = 1
@@ -297,11 +297,11 @@ def make_two_system_example():
 
     ## two-system specific parameters
     R = 0.0
-    eps = 1.0
+    eps = 0.5
     n = 1.0
-    lambd = 0.99
+    lambd = 0.9999
 
-    H1, H2, psi0, L1s, L2s, obsq_data_kron, _ = make_system_kerr_bistable_regime_chose_drive_two_systems(50, 'A', drive, drive_second_system=False)
+    H1, H2, psi0, L1s, L2s, obsq_data_kron, _ = make_system_kerr_bistable_regime_chose_drive_two_systems(dim, 'A', drive, drive_second_system=False)
     gen_num_system_two_systems(H1,
                                H2,
                                psi0,
@@ -324,5 +324,5 @@ def make_two_system_example():
 
 if __name__ == "__main__":
 
-    make_one_system_example()
-    # make_two_system_example()
+    # make_one_system_example()
+    make_two_system_example()
