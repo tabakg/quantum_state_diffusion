@@ -4,18 +4,18 @@
 // Worked on Mac (used on my local machine):
 g++ fast_sim.cpp -o fast_sim -std=c++11
 
-spec_file="/scratch/users/tabakg/qsd_output/json_spec/tmp_file.json"
-psis_out="/scratch/users/tabakg/qsd_output/fast_out/tmp_output.json"
-expects_out="/scratch/users/tabakg/qsd_output/fast_out/tmp_output_expects.json"
+spec_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json"
+psis_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json"
+expects_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output_expects.json"
 
 ./fast_sim "$spec_file" "$psis_out" "$expects_out"
 
 // Worked on Linux (i.e. Sherlock):
 g++ fast_sim.cpp -o fast_sim -std=c++11 -pthread
 
-spec_file="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_file.json"
-psis_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output.json"
-expects_out="/Users/gil/Google Drive/repos/quantum_state_diffusion/num_json_specifications/tmp_output_expects.json"
+spec_file="/scratch/users/tabakg/qsd_output/json_spec/tmp_file.json"
+psis_out="/scratch/users/tabakg/qsd_output/fast_out/tmp_output.json"
+expects_out="/scratch/users/tabakg/qsd_output/fast_out/tmp_output_expects.json"
 
 ./fast_sim "$spec_file" "$psis_out" "$expects_out"
 */
