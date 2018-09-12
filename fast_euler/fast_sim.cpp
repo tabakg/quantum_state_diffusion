@@ -715,7 +715,11 @@ void run_trajectory(system_type * system_ptr, int seed, int steps_for_noise,
 
   // total steps, including initial state.
   int num_steps = int(system.duration / system.delta_t);
-  int num_downsampled_steps = int(system.duration / (system.delta_t * system.downsample));
+  int num_downsampled_steps = int(num_steps / system.downsample);
+
+  std::cout << "system.duration: " << system.duration << std::endl;
+  std::cout << "num_steps: " << num_steps << std::endl;
+  std::cout << "num_downsampled_steps: " << num_downsampled_steps << std::endl;
 
   // accepts num_type, double, or long double
   num_type mean = 0;
@@ -732,7 +736,7 @@ void run_trajectory(system_type * system_ptr, int seed, int steps_for_noise,
 
   std::copy(current_psi.begin(), current_psi.end(), (*psis)[0].begin());
 
-  for(int i=0, j=0, k=0, l=0; i<num_steps; i++, j++, k++){
+  for(int i=0, j=0, k=0, l=0; i<num_downsampled_steps * system.downsample; i++, j++, k++){
     // Get new noise terms as we go
     if (j == steps_for_noise)
       j = 0;

@@ -95,7 +95,7 @@ for num_systems in num_systems_arr:
                             fast_sim_name = os.path.join(fast_sim_dir, "fast_sim")
 
                             ## Python script
-                            to_file = ("python %s --output_dir '%s' --Nfock_a %s"
+                            to_file = ("python %s --output_dir '%s' --Nfock_a %s "
                                       "--seed %s --regime '%s' --num_systems %s "
                                       "--delta_t %s --duration %s --downsample %s --sdeint_method_name '%s' "
                                       "--R %s --eps %s --noise_amp %s --lambda %s"

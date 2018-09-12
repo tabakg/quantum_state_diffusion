@@ -575,7 +575,7 @@ def main():
     json_file_name = "json_spec_" + param_str + ".json"
 
     json_file_dir=os.path.join(args.output_dir, json_file_name)
-    print("output directory is ", json_file_dir)
+    print("output file location is ", json_file_dir)
 
     tspan = np.arange(0,duration,delta_t)
 
