@@ -18,7 +18,7 @@ for new_dir in [output_dir,job_dir,out_dir]:
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
 
-OVERWRITE=False
+OVERWRITE=True
 
 REGIME = 'kerr_bistableA21.75'
 # delta_ts = [3e-7, 1e-6, 3e-6, 1e-5]
@@ -114,4 +114,4 @@ for num_systems in num_systems_arr:
                             filey.close()
 
                             ## run batch script
-                            os.system("sbatch -p %s %s" %(partition, filey_loc))
+                            os.system("sbatch -p %s --qos=long  %s" %(partition, filey_loc))
