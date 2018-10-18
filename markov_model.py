@@ -4,6 +4,7 @@ import os
 import pickle
 import sys
 import warnings
+from collections import Counter
 
 import numpy as np
 from numpy import linalg as la
@@ -16,6 +17,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from bisect import bisect_left
 plt.style.use("ggplot")
+
+from utils import sorted_eigs
 
 # Log everything to stdout
 logging.basicConfig(stream=sys.stdout,level=logging.DEBUG)
@@ -90,15 +93,6 @@ def get_parser():
 #### Supporting Functions
 ################################################################################
 
-def sorted_eigs(e_vals,e_vecs):
-    '''
-    Then sort the eigenvectors and eigenvalues
-    s.t. the eigenvalues monotonically decrease.
-    '''
-    l = zip(e_vals,e_vecs.T)
-    l = sorted(l,key = lambda z: -z[0])
-    return np.asarray([el[0] for el in l]),np.asarray([el[1] for el in l]).T
-
 def make_markov_model(labels,n_clusters):
     T = np.zeros((n_clusters,n_clusters))
     for i in range(len(labels)-1):
@@ -109,9 +103,11 @@ def make_markov_model(labels,n_clusters):
     row_norm = np.nan_to_num(row_norm)
     return (T.T*row_norm).T
 
+
 def next_state(state,T_cum):
     r = np.random.uniform()
     return bisect_left(np.asarray(T_cum)[state], r)
+
 
 def run_markov_chain(start_cluster, T, steps = 10000, slow_down=1):
     '''
@@ -142,6 +138,7 @@ def run_markov_chain(start_cluster, T, steps = 10000, slow_down=1):
         current = next_state(current,T_cum)
     return np.asarray(outs)
 
+
 def get_cluster_labels(X,n_clusters = 30, num_nearest_neighbors = 100):
     knn_graph = kneighbors_graph(X, num_nearest_neighbors, include_self=False)
     model = AgglomerativeClustering(linkage='ward',
@@ -151,11 +148,13 @@ def get_cluster_labels(X,n_clusters = 30, num_nearest_neighbors = 100):
     labels = model.labels_
     return labels
 
+
 def get_clusters(labels,n_clusters = 30):
     clusters = [[] for _ in range(n_clusters)]
     for point,cluster in enumerate(labels):
         clusters[cluster].append(point)
     return clusters
+
 
 def get_hmm_hidden_states(X,
                           n_clusters = 30,
@@ -184,41 +183,77 @@ def get_hmm_hidden_states(X,
     else:
         return hidden_states, hmm_model
 
+
 def get_obs_sample_points(obs_indices,traj_expects):
     '''
     Observed quantities at sampled points
     '''
     return np.asarray([traj_expects[:,l] for l in obs_indices])
 
-def get_expect_in_clusters(obs_indices,clusters, n_clusters, obs_sample_points):
+
+def get_expect_in_clusters(obs_indices, clusters, n_clusters, obs_sample_points):
     '''
     Get the average expectation value in each cluster.
     '''
     expect_in_clusters = {}
     for obs_index in obs_indices:
-        expect_in_clusters[obs_index] = [0. for _ in range(n_clusters)]
-        for clust_index,cluster in enumerate(clusters):
-            for point in cluster:
-                expect_in_clusters[obs_index][clust_index] += obs_sample_points[obs_index][point]
-            if len(cluster) != 0:
-                expect_in_clusters[obs_index][clust_index] /= float(len(cluster))
+        expect_in_clusters[obs_index] = [0.] * n_clusters
+        for cluster_index, cluster in enumerate(clusters):
+            if len(cluster) > 0:
+                points_in_cluster = obs_sample_points[obs_index, cluster]
+                expect_in_clusters[obs_index][cluster_index] = np.average(points_in_cluster)
             else:
-                expect_in_clusters[obs_index][clust_index] = None
+                expect_in_clusters[obs_index][cluster_index] = None
     return expect_in_clusters
+
+
+def get_cov_in_clusters(obs_indices, clusters, obs_sample_points):
+    '''
+    Get the covariance matrix of observables in each cluster.
+    '''
+    std_in_cluster = {}
+    for cluster_index, cluster in enumerate(clusters):
+        if len(cluster) > 0:
+            points_in_cluster = obs_sample_points[obs_indices, cluster]
+            std_in_cluster[cluster_index] = np.cov(points_in_cluster)
+        else:
+            std_in_cluster[cluster_index] = None
+    return std_in_cluster
+
 
 def get_obs_generated(obs_indices,
                       T_matrix, ## Transition matrix used
                       expect_in_clusters,
-                      steps = 10000,
+                      cov_each_cluster = None,
+                      num_steps = 10000,
                       n_clusters = 10,
                       start_cluster = 0, ## index of starting cluster
                       slow_down=1,
-                      return_state_indices_only = False):
-    steps = run_markov_chain(start_cluster,T_matrix, steps = steps, slow_down = slow_down)
+                      return_state_indices_only = False,
+                      return_expectations_only = False):
+    steps = run_markov_chain(start_cluster,T_matrix, steps = num_steps, slow_down = slow_down)
     if return_state_indices_only:
         return steps
     obs_generated = np.asarray([[expect_in_clusters[l][cluster] for cluster in steps ] for l in obs_indices])
-    return obs_generated
+    if return_expectations_only:
+        return obs_generated
+
+    ## get errors of expectation values from covariance matrices
+
+    if cov_each_cluster is None:
+        raise ValueError("get_obs_generated requires cov_each_cluster if not returning only indices or expectations.")
+
+    counts = dict(Counter(steps).items())
+    cov_each_cluster_in_traj = {k : np.random.multivariate_normal(mean, cov, v) for k,v in counts.items()}
+    indices_each_cluster = {k : 0 for k in counts}
+    error_for_steps = np.zeros((len(obs_indices), num_steps), dtype=complex)
+
+    for i in range(num_steps):
+        current_cluster_index = steps[i]
+        error_for_steps[:,i] = cov_each_cluster_in_traj[current_cluster_index][indices_each_cluster[current_cluster_index]]
+        indices_each_cluster[current_cluster_index] += 1
+    return error_for_steps + obs_generated
+
 
 def get_reduced_model_time_series(expect_in_clusters,indices,point_in_which_cluster):
     '''
@@ -239,6 +274,7 @@ def contour_plot(Mat):
     fig.colorbar(cax)
     plt.show()
 
+
 def make_density_scatterplts(X,Y,label_shift = 0, observable_names = None,s=5):
     if observable_names is None:
         observable_names = [str(j+1) for j in range(X.shape[-1])]
@@ -253,6 +289,7 @@ def make_density_scatterplts(X,Y,label_shift = 0, observable_names = None,s=5):
             z = gaussian_kde(xy)(xy)
             col.scatter(x, y, c=np.log(z), s=s, edgecolor='')
     plt.show()
+
 
 def ellipses_plot(X, indices, hmm_model, n_clusters, std_dev = 1):
     # Calculate the point density
@@ -311,6 +348,7 @@ class dim_red:
             self.obs_indices = obs_indices
         self.name = name
 
+
     def plot_obs_v_diffusion(self,
                             observable_names = None,
                             s=5,
@@ -323,6 +361,7 @@ class dim_red:
                                 observable_names = observable_names,
                                 s=s)
 
+
     def plot_diffusion_v_diffusion(self,
                                    color='percentile',
                                    max_coord1=4,
@@ -333,7 +372,7 @@ class dim_red:
         for l in self.obs_indices:
             fig = plt.figure(figsize=(max_coord2*10,max_coord1*10))
             if color == 'percentile':
-                cols = rankdata(self.expects_sampled[:,l], "average") / self.num_sample_points
+                cols = rankdata(self.expects_sampled[:,l], "average")
             else:
                 assert color == 'density'
             for k in range(max_coord1):
@@ -353,6 +392,7 @@ class dim_red:
             if color == 'density': ## only one iteration
                 break
 
+
     def plot_diffusion_3d(self,
                           color_by_percentile = True,
                           coords = [0,1,2]):
@@ -364,10 +404,11 @@ class dim_red:
 
         for l in self.obs_indices:
             ax = fig.add_subplot(1, num_obs, l+1, projection='3d')
-            expects_sampled_percentile = rankdata(self.expects_sampled[:,l], "average") / self.num_sample_points
+            expects_sampled_percentile = rankdata(self.expects_sampled[:,l], "average")
             ax.scatter(self.X[:,coords[0]],self.X[:,coords[1]],self.X[:,coords[2]],
                         c = expects_sampled_percentile)
         plt.show()
+
 
 class markov_model_builder:
     def __init__(self, dim_red=None, name=None):
@@ -387,6 +428,7 @@ class markov_model_builder:
         else:
             print("Warning, dim_red initialized to None.")
 
+
     def load(self, file_path):
         f = open(file_path, 'rb')
         tmp_dict = pickle.load(f)
@@ -394,10 +436,12 @@ class markov_model_builder:
 
         self.__dict__.update(tmp_dict)
 
+
     def save(self, file_path):
         f = open(file_path,'wb')
         pickle.dump(self.__dict__, f, 2)
         f.close()
+
 
     def build_model(self,
                     n_clusters = 10,
@@ -406,6 +450,7 @@ class markov_model_builder:
                     covariance_type = 'full',
                     tol=1e-2,
                     get_expects = True,
+                    get_cov = True,
                     random_state = 1,
                     verbose = True,
                     which_coords = 'X',
@@ -415,6 +460,7 @@ class markov_model_builder:
         which_coords can be 'X' for reduced coordiantes (e.g. diffusion coords)
         or 'expects' for expectation values
         '''
+        print("building model...")
         if method == 'hmm' or method == 'agg_clustering':
             self.method = method
         else:
@@ -451,8 +497,13 @@ class markov_model_builder:
             raise ValueError("Unknown method type. method can be 'hmm' or 'agg_clustering'. ")
 
         if get_expects:
+            print('get_expects is True')
             self.obs_sample_points = get_obs_sample_points(self.obs_indices,self.expects_sampled)
             self.expects_in_clusters = get_expect_in_clusters(self.obs_indices,self.clusters, self.n_clusters, self.obs_sample_points)
+        if get_cov:
+            print('get_cov is True')
+            self.cov_each_cluster = get_cov_in_clusters(self.obs_indices, self.clusters, self.obs_sample_points)
+
 
     def get_ordering_by_obs(self,obs_index = 0):
         assert self.status == 'model built'
@@ -461,6 +512,7 @@ class markov_model_builder:
         D = {num:i for num,i in  zip(expects_in_clusters,range(self.n_clusters))}
         cluster_order = [D[key] for key in sorted(D.keys())]
         return cluster_order
+
 
     def plot_transition_matrix(self, obs_index = None,):
         assert self.status == 'model built'
@@ -474,12 +526,14 @@ class markov_model_builder:
         else:
             raise ValueError("obs_index should be None or an integer (representing an observable).")
 
+
     def ellipses_plot(self,indices = [0,1]):
         '''
         Works only for hmm, using the diffusion coordinates X.
         '''
         assert self.status == 'model built'
         ellipses_plot(self.X_to_use,indices,self.hmm_model,self.n_clusters)
+
 
     def generate_obs_traj(self,
                           steps=10000,
@@ -500,6 +554,7 @@ class markov_model_builder:
                                 start_cluster = start_cluster, ## index of starting cluster
                                 slow_down=slow_down,
                                 return_state_indices_only = return_state_indices_only)
+
 
 if __name__ == "__main__":
 
@@ -538,8 +593,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown data expects shape.")
 
-    vals_tmp, vecs_tmp = data1['vals'][1:], data1['vecs'][:,1:]
-    vals, vecs = sorted_eigs(vals_tmp, vecs_tmp)
+    vals, vecs = data1['vals'], data1['vecs']
 
     name = input_file_path
     dim_red_obj = dim_red(vecs, Ntraj, expects_sampled, name)
@@ -566,9 +620,10 @@ if __name__ == "__main__":
                                 verbose=True,
                                 which_coords='X',
                                 coords_indices_to_use=None)
+            continue ## success, leave the while loop
         except ValueError:
             seed += 1
-            tries
+            tries += 1
 
     mod.save(output_file_path)
 

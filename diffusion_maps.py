@@ -8,6 +8,7 @@ import sys
 sys.path.append('/scratch/users/tabakg/qsd_dev')
 from utils import load_trajectory
 from utils import save
+from utils import sorted_eigs
 
 # Log everything to stdout
 logging.basicConfig(stream=sys.stdout,level=logging.DEBUG)
@@ -184,7 +185,11 @@ def main():
         assert psis_current_traj.shape[0] == expects_current_traj.shape[0]
 
         ## Find downsample factor to avoid using too much memory
+        ## This assumes we want a total of sample_size points, and
+        ## the number of points per trajectory is the same.
         every_other_n = int(psis_current_traj.shape[0] * len(traj_list) / (sample_size))
+
+        ## If the fraction is too small (too few points) just sample every point.
         if every_other_n == 0:
             every_other_n = 1
 
@@ -202,23 +207,6 @@ def main():
     logging.info("Successfully loaded %s/%s trajectories." %(len(traj_list), num_successful))
     logging.info("Total number of points is %s" % psis_current_traj.shape[0])
 
-    # pkl_dict = {traj: load_trajectory(traj) for traj in traj_list}
-    # diffusion_coords_dict = {}
-    # psis = np.concatenate(np.concatenate([pkl_dict[traj]['psis'] for traj in traj_list]))
-    # diffusion_coords_dict['expects'] = np.concatenate(np.concatenate([pkl_dict[traj]['expects'] for traj in traj_list]))
-    # diffusion_coords_dict['times'] = np.concatenate([pkl_dict[traj]['times'] for traj in traj_list])
-    # diffusion_coords_dict['traj_list'] = traj_list
-    #
-    # if sample_size == 0:
-    #     sampled_psis = psis
-    # else:
-    #     every_other_n = int(psis.shape[-1] / sample_size)
-    #     if every_other_n == 0:
-    #         sampled_psis = psis
-    #     else:
-    #         sampled_psis = psis[::every_other_n]
-
-    ## Changed psis --> sampled_psis here!!
     psis_doubled = np.concatenate([sampled_psis.real.T,sampled_psis.imag.T]).T ## convert to (real, imag) format
 
     distance_matrix = FS_metric(psis_doubled, psis_doubled)
@@ -226,7 +214,12 @@ def main():
                                         alpha=alpha,
                                         eig_lower_bound=eig_lower_bound,
                                         eig_upper_bound=eig_upper_bound)
-    diffusion_coords = {"vals":vals, "vecs":vecs}
+
+    ## Sort eigen-pairs, dropping the trivial eigenvalue.
+    vals_tmp, vecs_tmp = vals[1:], vecs[:,1:]
+    sorted_vals, sorted_vecs = sorted_eigs(vals_tmp, vecs_tmp)
+
+    diffusion_coords = {"vals" : sorted_vals, "vecs" : sorted_vecs}
     diffusion_coords_dict.update(diffusion_coords)
     save(output, diffusion_coords_dict)
 

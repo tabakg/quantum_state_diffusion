@@ -5,6 +5,7 @@ import os
 import hashlib
 import numpy as np
 from scipy import sparse
+import json
 
 def print_params(params):
     '''print params will print a dictioary of parameters to the screen for the user
@@ -120,13 +121,13 @@ def get_params(traj):
     params['Nfock_j'] = int(Nfock_j)
     params['duration'] = float(duration)
     params['downsample'] = int(downsample)
-    params['method'] = str(method)
+    params['sdeint_method_name'] = str(method)
     params['num_systems'] = int(num_systems)
     params['R'] = float(R)
-    params['EPS'] =float(EPS)
+    params['eps'] =float(EPS)
     params['noise_amp'] =float(noise_amp)
     params['trans_phase'] =float(trans_phase)
-    params['drive'] = True if drive == "True" else False
+    params['drive_second_system'] = True if drive == "True" else False
     return params
 
 ## Which values to use to distinguish groups of files
@@ -134,22 +135,40 @@ bools = {'seed': False,
          'regime': True,
          'ntraj': True,
          'delta_t': True,
+         'Nfock_a': True,
          'Nfock_j': True,
          'duration': True,
          'downsample': True,
-         'method': True,
+         'sdeint_method_name': True,
          'num_systems': True,
          'R': True,
-         'EPS': True,
+         'eps': True,
+         'lambd': True,
          'noise_amp': True,
          'trans_phase': True,
-         'drive': True}
+         'drive_second_system': True}
+
 
 def files_by_params(files, bools, max_seed=None, duration=None):
     """
     Return a list of lists, each one having the unique files with distinct params determined by params_bool
     """
-    params_each_file = {f: get_params(f) for f in files}
+
+    ## Ensure all files have the same extension
+    extension = files[0].split('.')[-1]
+    assert all(f.split('.')[-1] == extension for f in files)
+
+    params_each_file = {}
+    for f in files:
+        name = f.split('/')[-1]
+        try:
+            params_each_file[f] = get_params(name)
+        except: ## couldn't use the first one (for original pickle files)
+            try:
+                params_each_file[f] = get_params_json(name) ## works for JSON or pickle from JSON.
+            except:
+                raise ValueError("could not get parameters from file %s." %name)
+
     if max_seed:
         params_each_file = {f:p for f,p in params_each_file.items() if p['seed'] <= max_seed}
     if duration:
@@ -221,3 +240,86 @@ def preprocess_operators(H1, H2, L1s, L2s, ops_on_whole_space):
         L1s = [sparse.csr_matrix(np.kron(L1.todense(), I2)) for L1 in L1s]
         L2s = [sparse.csr_matrix(np.kron(I1, L2.todense())) for L2 in L2s]
         return H1, H2, L1s, L2s
+
+def get_params_json(file):
+    """Get parameters from Json file.
+
+    This is different from the older get_params -- the convention for the JSON
+    files is to use underscores instead of dashes to simplify parsing.
+
+    Args:
+        file (string): name of file
+    Returns:
+        params (dict): maps each parameter to the value indicated by the file
+        name.
+    """
+    p = {}
+    [_, seed, ntraj, delta_t, Nfock_a,
+    Nfock_j, duration, downsample,
+    sdeint_method_name, num_systems,
+    R, eps, noise_amp, lambd, trans_phase, drive_second_system] = file.split('_')
+    p['seed'] = int(seed)
+    p['ntraj'] = int(ntraj)
+    p['delta_t'] = float(delta_t)
+    p['Nfock_a'] = int(Nfock_a)
+    p['Nfock_j'] = int(Nfock_j)
+    p['duration'] = float(duration)
+    p['downsample'] = int(downsample)
+    p['sdeint_method_name'] = sdeint_method_name
+    p['num_systems'] = int(num_systems)
+    p['R'] = float(R)
+    p['eps'] = float(eps)
+    p['noise_amp'] = float(noise_amp)
+    p['lambd'] = float(lambd)
+    p['trans_phase'] = float(trans_phase)
+    p['drive_second_system'] = bool(drive_second_system)
+    return p
+
+def get_by_params_json(files, params):
+    """Get all files with specified parameters.
+
+    Args:
+        files (list of strings): List of files
+        params (dict): dictionary with specific parameters whose values should
+        be chosen.
+    Returns:
+        selected_files (list of strings): subset of the files from the input
+        which have the correct parameters.
+    """
+    return [f for f in files if all(get_params_json(f)[p] == params[p] for p in params)]
+
+def load_json_seq(file_path):
+    """Loads data from JSON file.
+
+    Args:
+        file_path (string): name of JSON file with expectation values.
+
+    Returns:
+        data (numpy array): Numpy array with loaded expectation values.
+    """
+
+    with open(file_path) as json_data:
+        trajectories = json.load(json_data)
+    return np.array([[np.array(p['real']) + 1j*np.array(p['imag'])
+                      for p in traj]
+                          for traj in trajectories], dtype=complex)
+
+
+def sorted_eigs(e_vals, e_vecs):
+    '''
+    Then sort the eigenvectors and eigenvalues
+    s.t. the eigenvalues monotonically decrease.
+
+    K is the number of eigenvalues/eigenvectors.
+
+    Args:
+        e_vals ([K,] ndarray): input eigenvalues
+        e_vecs ([dim, K] ndarray): corresponding eigenvectors
+
+    Returns:
+        e_vals ([K,] ndarray): Sorted output eigenvalues
+        e_vecs ([dim, K] ndarray): Corresponding sorted eigenvectors
+    '''
+    l = zip(e_vals, e_vecs.T)
+    l = sorted(l,key = lambda z: -z[0])
+    return np.asarray([el[0] for el in l]), np.asarray([el[1] for el in l]).T
