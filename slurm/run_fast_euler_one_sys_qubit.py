@@ -10,6 +10,10 @@ fast_sim_dir="/scratch/users/tabakg/qsd_dev/fast_euler"
 
 sys.path.append(dev_dir)
 
+from utils import (
+    make_params_string
+)
+
 # Variables for each job
 memory = 16000
 
@@ -22,18 +26,18 @@ for new_dir in [output_dir,job_dir,out_dir]:
 
 OVERWRITE=False
 
-REGIME = 'kerr_bistableA21.75'
-delta_ts = [1e-6]
+REGIME = 'kerr_qubit'
+delta_ts = [1e-7]
 num_systems_arr=[1]
 
-NUM_SEEDS=32
+NUM_SEEDS=8
 ntraj=1
-Nfock_a=30
+Nfock_a=10
 Nfock_j=2
 duration=50.0
-downsample_dict = {1e-6:1000}
+downsample_dict = {1e-6:1000, 1e-7:10000}
 partition = 'normal'
-partition_dict = {1e-6: False}
+partition_dict = {1e-6: False, 1e-7:False}
 noise_amp=1.0
 trans_phase=1.0
 Rs=[0.0]
@@ -72,6 +76,7 @@ for R in Rs:
                                      trans_phase,
                                      drive_second_system)
                             param_str = make_params_string(args)
+
                             json_spec_name = "json_spec_" + param_str + ".json"
                             json_spec_loc = os.path.join(json_spec_dir, json_spec_name)
                             json_spec_exists = os.path.isfile(json_spec_loc)

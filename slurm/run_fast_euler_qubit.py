@@ -10,6 +10,10 @@ fast_sim_dir="/scratch/users/tabakg/qsd_dev/fast_euler"
 
 sys.path.append(dev_dir)
 
+from utils import (
+    make_params_string
+)
+
 # Variables for each job
 memory = 16000
 
@@ -22,24 +26,24 @@ for new_dir in [output_dir,job_dir,out_dir]:
 
 OVERWRITE=False
 
-REGIME = 'kerr_bistableA21.75'
-delta_ts = [1e-6]
-num_systems_arr=[1]
+REGIME = 'kerr_qubit'
+delta_ts = [1e-7]
+num_systems_arr=[2]
 
-NUM_SEEDS=32
+NUM_SEEDS=2
 ntraj=1
-Nfock_a=30
+Nfock_a=50
 Nfock_j=2
-duration=50.0
-downsample_dict = {1e-6:1000}
-partition = 'normal'
-partition_dict = {1e-6: False}
+duration=10.0
+downsample_dict = {1e-6:1000, 1e-7:10000}
+partition = 'normal' ## leave as normal, even for long runs...
+partition_dict = {1e-6: False, 1e-7:True} ## whether to use long runs (2-7 days)
 noise_amp=1.0
 trans_phase=1.0
-Rs=[0.0]
+Rs=[0.0, 0.6, 1.0]
 min_EPSs = [0. if r ==0. else (1-np.sqrt(1-r**2))/r for r in Rs]
 EPSs = {R: [E] for R, E in zip(Rs, min_EPSs)}
-lambds_dict={R : [0.0] for R in Rs}
+lambds_dict={R : [0.0, 0.999, 0.99999] for R in Rs}
 
 SEEDs=range(1, NUM_SEEDS + 1)
 DRIVES=False, ##Driving second system?
@@ -72,6 +76,7 @@ for R in Rs:
                                      trans_phase,
                                      drive_second_system)
                             param_str = make_params_string(args)
+
                             json_spec_name = "json_spec_" + param_str + ".json"
                             json_spec_loc = os.path.join(json_spec_dir, json_spec_name)
                             json_spec_exists = os.path.isfile(json_spec_loc)
@@ -96,6 +101,7 @@ for R in Rs:
                                 filey.writelines("#SBATCH --error=%s/qsd_%s.err\n" %(out_dir,seed))
 
                                 if long_run:
+                                    filey.writelines("#SBATCH --qos long\n")
                                     filey.writelines("#SBATCH --time=7-00:00\n")
                                 else:
                                     filey.writelines("#SBATCH --time=2-00:00\n")
@@ -124,4 +130,5 @@ for R in Rs:
                                 filey.close()
 
                                 ## run batch script
+
                                 os.system("sbatch -p %s %s" %(partition, filey_loc))

@@ -29,6 +29,8 @@ from utils import (
     get_params,
     save2pkl,
     save2mat,
+    get_params_json,
+    dim_check
 )
 import markov_model
 
@@ -39,6 +41,7 @@ from prepare_regime import (
     ## make_system_JC_two_systems, ## Not yet implemented
     make_system_kerr_bistable_two_systems,
     make_system_kerr_qubit_two_systems,
+    make_system_kerr_bistable_regime_chose_drive,
 )
 
 from quantum_state_diffusion import (
@@ -46,8 +49,7 @@ from quantum_state_diffusion import (
     complex_to_real_matrix,
     individual_term,
     classical_trans,
-    insert_conj,
-    dim_check)
+    insert_conj)
 
 SDEINT_METHODS = {"itoEuler": sdeint.itoEuler,
                   "itoSRI2": sdeint.itoSRI2,
@@ -80,7 +82,8 @@ def get_parser():
                         dest='slow_down',
                         help="How much to slow down the generated trajectories. "
                              "Roughly corresponds to the inverse of the sampling "
-                             "rate to generate the Markov model.",
+                             "rate to generate the Markov model. It is also "
+                             "adjusted by the number of trajectories in training.",
                         type=int,
                         default=1000)
 
@@ -96,21 +99,21 @@ def get_parser():
                         dest='duration',
                         help="Duration (iterations = duration / divided by delta_t)",
                         type=float,
-                        default=30)
+                        default=0.1)
 
     # Delta T
     parser.add_argument("--delta_t",
                         dest='deltat',
                         help="Parameter delta_t",
                         type=float,
-                        default=2e-3)
+                        default=1e-6)
 
     # How much to downsample results
     parser.add_argument("--downsample",
                         dest='downsample',
                         help="How much to downsample results",
                         type=int,
-                        default=1)
+                        default=1000)
 
     # Simulation method
     parser.add_argument("--sdeint_method_name",
@@ -189,6 +192,15 @@ def get_parser():
                         type=bool,
                         default=False)
 
+    # lambda, filtering parameter.
+    # Default value worked well for full simulations.
+    parser.add_argument("--lambd",
+                        dest='lambd',
+                        help="Filtering parameter.",
+                        type=float,
+                        default=0.99995)
+
+
     ################################################################################
     # Output Variables
     ################################################################################
@@ -233,8 +245,8 @@ def obs_to_ls_kerr_bistable(obs):
     L_params = {"kappa_1" : 25, "kappa_2" : 25}
     x, p = obs[1:3] ## assume specific structure in obs to be [_, a_k+a_k.dag(), (a_k-a_k.dag())/1j, ...]
     a_k = (x+1j*p)/2.
-    L = [np.sqrt(L_params['kappa_1'])*a_k,
-         np.sqrt(L_params['kappa_2'])*a_k]
+    L = np.array([np.sqrt(L_params['kappa_1'])*a_k,
+                  np.sqrt(L_params['kappa_2'])*a_k])
     return L
 
 class hybrid_drift_diffusion_holder(object):
@@ -272,7 +284,7 @@ class hybrid_drift_diffusion_holder(object):
     d: complex-valued dimension of the space
     m: number of complex-valued noise terms.
     '''
-    def __init__(self, l1s_reduced, H2, L2s, R, eps, n, tspan, trans_phase=None):
+    def __init__(self, l1s_reduced, H2, L2s, R, eps, lambd, n, tspan, trans_phase=None):
 
         self.t_old = min(tspan) - 1.
 
@@ -281,6 +293,7 @@ class hybrid_drift_diffusion_holder(object):
         self.T = np.sqrt(1 - R**2)
         self.eps = eps
         self.n = n
+        self.lambd = lambd
 
         if trans_phase is not None:
             self.eps *= trans_phase
@@ -291,15 +304,14 @@ class hybrid_drift_diffusion_holder(object):
 
         dim_check(H2, L2s)
 
-        for ls in l1s_reduced:
-            if len(tspan) > len(ls):
-                raise ValueError("An item in l1s_reduced provided (with len=%s) not long enough for tspan (len=%s)"
-                                 %(len(ls), len(tspan))
-                                )
+        if l1s_reduced.shape[1] < len(tspan):
+            raise ValueError("An item in l1s_reduced provided (with len=%s) not long enough for tspan (len=%s)"
+                             %(l1s_reduced.shape[1], len(tspan)))
+
         self.l1s_reduced = l1s_reduced
         self.l1s_index = -1
 
-        self.l1s = None
+        self.l1s = np.zeros(l1s_reduced.shape[0])
         self.L2psis = None
         self.l2s = None
 
@@ -317,7 +329,8 @@ class hybrid_drift_diffusion_holder(object):
         if t != self.t_old:
             self.L2psis = [L2.dot(psi) for L2 in self.L2s]
             self.l1s_index += 1
-            self.l1s = [arr[self.l1s_index] for arr in self.l1s_reduced]
+            self.l1s_unfiltered = self.l1s_reduced[:, self.l1s_index]
+            self.l1s = self.lambd * self.l1s + (1 - self.lambd) * self.l1s_unfiltered
             self.l2s = [L2psi.dot(psi.conj()) for L2psi in self.L2psis]
             self.t_old = t
 
@@ -345,7 +358,7 @@ class hybrid_drift_diffusion_holder(object):
     def G_normalized(self, psi, t):
         '''Computes diffusion G.
 
-        Because of the measurement feedback, we require an additional
+        Because of the measurement feedback, we upsamplere an additional
         noise term dW_2^*. So instead of the noise terms we would expect
         with a total of N ports, [dW_1, ..., dW_m]^T, the appropriate noise
         to use for this term are [dW_1, dW_2, dW_2^*, dW_3, ..., dW_m]^T
@@ -376,8 +389,8 @@ def qsd_solve_hybrid_system(H2,
                             tspan,
                             l1s_reduced,
                             L2s,
-                            R,
                             eps,
+                            lambd,
                             n,
                             sdeint_method,
                             trans_phase=None,
@@ -451,7 +464,7 @@ def qsd_solve_hybrid_system(H2,
     T_init = time()
     psi0_arr = np.asarray(psi0.todense()).T[0]
     x0 = np.concatenate([psi0_arr.real, psi0_arr.imag])
-    drift_diffusion = hybrid_drift_diffusion_holder(l1s_reduced, H2, L2s, R, eps, n, tspan, trans_phase=None)
+    drift_diffusion = hybrid_drift_diffusion_holder(l1s_reduced, H2, L2s, R, eps, lambd, n, tspan, trans_phase=None)
 
     f = complex_to_real_vector(drift_diffusion.f_normalized)
     G = complex_to_real_matrix(drift_diffusion.G_normalized)
@@ -545,30 +558,46 @@ if __name__ == "__main__":
     R = params['R'] = args.R
     eps = params['eps'] = args.eps
     noise_amp = params['noise_amp'] = args.noise_amp
+    lambd = params['lambd'] = args.lambd
     trans_phase = params['trans_phase'] = args.trans_phase
 
-    if slow_down is None:
-        slow_down = params['slow_down'] = downsample
     mod = markov_model.markov_model_builder()
     mod.load(markov_file)
-    reduced_traj_len = math.ceil(duration/(delta_t*slow_down))
-    obs = mod.generate_obs_traj(reduced_traj_len, seed, slow_down=slow_down)
+    reduced_traj_len = math.ceil(duration/(delta_t*slow_down)) + 1
+    obs = mod.generate_obs_traj(steps=reduced_traj_len, random_state=seed, slow_down=slow_down)
     pkl_file = open(diffusion_file, 'rb')
     data1 = pickle.load(pkl_file)
     traj_list = data1['traj_list']
 
-    sys1_params = params['sys1_params'] = get_params(traj_list[0])
+    if slow_down is None:
+        slow_down = params['slow_down'] = downsample
+    slow_down *= len(traj_list) ## scale down by number of trajectories used
+
+    traj_name = traj_list[0].split('/')[-1]
+    try:
+        sys1_params = params['sys1_params'] = get_params(traj_name)
+    except:
+        try:
+            sys1_params = params['sys1_params'] = get_params_json(traj_name)
+        except:
+            print("Could not get parameters from trajectory.")
+
     if args.sdeint_method_name == "":
-        logging.info("sdeint_method_name not set. Using %s, the same as system 1." % sys1_params['method'] )
-        sdeint_method_name = params['method'] =  sys1_params['method']
+        logging.info("sdeint_method_name not set. Using %s, the same as system 1." % sys1_params['sdeint_method_name'] )
+        sdeint_method_name = params['sdeint_method_name'] =  sys1_params['sdeint_method_name']
     else:
-        sdeint_method_name = params['method'] = args.sdeint_method_name
-    sys1_regime = sys1_params['regime']
+        sdeint_method_name = params['sdeint_method_name'] = args.sdeint_method_name
+
+    if 'regime' in sys1_params:
+        sys1_regime = sys1_params['regime']
+    else:
+        sys1_regime = 'kerr_bistableA21.75' ## if regime is not included, assume this was it.
     sys1_Nfock_a = sys1_params['Nfock_a']
     sys1_Nfock_j = sys1_params['Nfock_j']
 
+    ## Use sys1 as default
     if Regime is None:
-        Regime = params['Regime'] = sys1_regime
+        Regime = params['regime'] = sys1_regime
     if Nfock_a is None:
         Nfock_a = params['Nfock_a'] = sys1_Nfock_a
     if Nfock_j is None:
@@ -596,24 +625,11 @@ if __name__ == "__main__":
     elif Regime == "kerr_bistable":
         logging.info("Regime is set to %s", Regime)
         H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable(Nfock_a, drive=drive_second_system)
-    elif Regime2 == "kerr_bistable":
-        logging.info("Regime is set to %s", Regime)
-        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime2(Nfock_a, drive=drive_second_system)
-    elif Regime3 == "kerr_bistable":
-        logging.info("Regime is set to %s", Regime)
-        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime3(Nfock_a, drive=drive_second_system)
-    elif Regime4 == "kerr_bistable":
-        logging.info("Regime is set to %s", Regime)
-        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime4(Nfock_a, drive=drive_second_system)
-    elif Regime5 == "kerr_bistable":
-        logging.info("Regime is set to %s", Regime)
-        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime5(Nfock_a, drive=drive_second_system)
-    elif Regime6 == "kerr_bistable":
-        logging.info("Regime is set to %s", Regime)
-        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime6(Nfock_a, drive=drive_second_system)
-    elif Regime7 == "kerr_bistable":
-        logging.info("Regime is set to %s", Regime)
-        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime6(Nfock_a, drive=drive_second_system)
+    elif Regime[:len("kerr_bistable")] == "kerr_bistable": ##inputs in this case are e.g. kerr_bistableA33.25_...
+        which_kerr = Regime[len("kerr_bistable")] ## e.g. A in kerr_bistableA33.25_
+        custom_drive = float(Regime[len("kerr_bistableA"):]) ## e.g. 33.25 in kerr_bistableA33.25
+        logging.info("Regime is set to %s, with custom drive %s" %(Regime, custom_drive))
+        H, psi0, Ls, obsq_data, obs_names = make_system_kerr_bistable_regime_chose_drive(Nfock_a, which_kerr, custom_drive)
     elif Regime == "kerr_qubit":
         logging.info("Regime is set to %s", Regime)
         H, psi0, Ls, obsq_data, obs_names = make_system_kerr_qubit(Nfock_a, drive=drive_second_system)
@@ -638,8 +654,8 @@ if __name__ == "__main__":
                                 tspan,
                                 l1s_reduced,
                                 Ls,
-                                R=R,
                                 eps=eps,
+                                lambd=lambd,
                                 n=noise_amp,
                                 sdeint_method=sdeint_method,
                                 trans_phase=trans_phase,
@@ -652,8 +668,9 @@ if __name__ == "__main__":
                                 seed=1,
                                 implicit_type = None)
 
-    ### include time in results
-    D.update({'tspan':tspan})
+    ## include time in results, and unfiltered behavior of the generated
+    ## trajectory of system 1.
+    D.update({'tspan' : tspan, 'sys1_expects' : obs})
 
     ### Save results
     if save_mat:

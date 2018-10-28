@@ -27,7 +27,7 @@ except:
     os.mkdir(diffusion_maps_folder)
 
 # Variables for each job
-memory = 16000
+memory = 64000
 partition = 'normal'
 
 # Create subdirectories for job, error, and output files
@@ -38,9 +38,9 @@ for new_dir in [output_dir,job_dir,out_dir]:
         os.mkdir(new_dir)
 
 files = [os.path.join(trajectory_folder,f) for f in os.listdir(trajectory_folder) if f[-3:] == 'pkl']
-file_lists = files_by_params(files, bools, duration=50.)
+file_lists = files_by_params(files, bools, duration=50., max_seed = 0)
 
-for file_list in file_lists[:1]:
+for file_list in file_lists:
 
     traj = ",".join(sorted(file_list))
     hash_code = make_hash(traj)

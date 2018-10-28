@@ -15,6 +15,10 @@ def print_params(params):
         logging.info("Parameter %s set to %s",key,value)
 
 
+def make_params_string(args):
+    return ("%s_"*16)[:-1] %args
+
+
 def save2mat(data, file_name, obs, params=None):
     ''' uses scipy.io savemat to save a .mat file of the data
     :param data: the data dictionary object
@@ -149,7 +153,7 @@ bools = {'seed': False,
          'drive_second_system': True}
 
 
-def files_by_params(files, bools, max_seed=None, duration=None):
+def files_by_params(files, bools, min_seed = None, max_seed=None, duration=None):
     """
     Return a list of lists, each one having the unique files with distinct params determined by params_bool
     """
@@ -169,8 +173,10 @@ def files_by_params(files, bools, max_seed=None, duration=None):
             except:
                 raise ValueError("could not get parameters from file %s." %name)
 
-    if max_seed:
+    if max_seed is not None:
         params_each_file = {f:p for f,p in params_each_file.items() if p['seed'] <= max_seed}
+    if min_seed is not None:
+        params_each_file = {f:p for f,p in params_each_file.items() if p['seed'] >= min_seed}
     if duration:
         params_each_file = {f:p for f,p in params_each_file.items() if p['duration'] == duration}
     relevant_params_each_file = {f : tuple(sorted((k,v) for k,v in p.items() if bools[k]))
@@ -241,6 +247,7 @@ def preprocess_operators(H1, H2, L1s, L2s, ops_on_whole_space):
         L2s = [sparse.csr_matrix(np.kron(I1, L2.todense())) for L2 in L2s]
         return H1, H2, L1s, L2s
 
+
 def get_params_json(file):
     """Get parameters from Json file.
 
@@ -253,11 +260,32 @@ def get_params_json(file):
         params (dict): maps each parameter to the value indicated by the file
         name.
     """
+    file = file.split('/')[-1] ## make sure it wasn't a directory...
     p = {}
-    [_, seed, ntraj, delta_t, Nfock_a,
-    Nfock_j, duration, downsample,
-    sdeint_method_name, num_systems,
-    R, eps, noise_amp, lambd, trans_phase, drive_second_system] = file.split('_')
+    args = file.split('_')
+
+    if len(args) == 16: ## if regime is not included
+        [_, seed, ntraj, delta_t, Nfock_a,
+        Nfock_j, duration, downsample,
+        sdeint_method_name, num_systems,
+        R, eps, noise_amp, lambd, trans_phase, drive_second_system] = args
+
+    elif len(args) == 17:
+        [_, regime, seed, ntraj, delta_t, Nfock_a,
+        Nfock_j, duration, downsample,
+        sdeint_method_name, num_systems,
+        R, eps, noise_amp, lambd, trans_phase, drive_second_system] = args
+        p['regime'] = regime
+
+    elif len(args) == 18:
+        [_, regime1, regime2, seed, ntraj, delta_t, Nfock_a,
+        Nfock_j, duration, downsample,
+        sdeint_method_name, num_systems,
+        R, eps, noise_amp, lambd, trans_phase, drive_second_system] = args
+        p['regime'] = regime1 + "_" + regime2
+    else:
+        raise ValueError("Unknown name structure for file %s." %file)
+
     p['seed'] = int(seed)
     p['ntraj'] = int(ntraj)
     p['delta_t'] = float(delta_t)
@@ -272,8 +300,12 @@ def get_params_json(file):
     p['noise_amp'] = float(noise_amp)
     p['lambd'] = float(lambd)
     p['trans_phase'] = float(trans_phase)
-    p['drive_second_system'] = bool(drive_second_system)
+    if drive_second_system == "True":
+        p['drive_second_system'] = True
+    else:
+        p['drive_second_system'] = False
     return p
+
 
 def get_by_params_json(files, params):
     """Get all files with specified parameters.
@@ -287,6 +319,7 @@ def get_by_params_json(files, params):
         which have the correct parameters.
     """
     return [f for f in files if all(get_params_json(f)[p] == params[p] for p in params)]
+
 
 def load_json_seq(file_path):
     """Loads data from JSON file.

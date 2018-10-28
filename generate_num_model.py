@@ -20,14 +20,10 @@ import argparse
 from utils import preprocess_operators
 import logging
 
-from quantum_state_diffusion import (
-    qsd_solve,
-    qsd_solve_two_systems
-)
-
 from utils import (
-    print_params
-)
+    print_params,
+    make_params_string,
+    )
 
 from prepare_regime import (
     make_system_JC,
@@ -556,21 +552,24 @@ def main():
 
     #### output directory and file name, generated from inputs
 
-    param_str = ("%s_"*15)[:-1] %(seed,
-                                 ntraj,
-                                 delta_t,
-                                 Nfock_a,
-                                 Nfock_j,
-                                 duration,
-                                 downsample,
-                                 sdeint_method_name,
-                                 num_systems,
-                                 R,
-                                 eps,
-                                 noise_amp,
-                                 lambd,
-                                 trans_phase,
-                                 drive_second_system)
+    params_args = (Regime,
+             seed,
+             ntraj,
+             delta_t,
+             Nfock_a,
+             Nfock_j,
+             duration,
+             downsample,
+             sdeint_method_name,
+             num_systems,
+             R,
+             eps,
+             noise_amp,
+             lambd,
+             trans_phase,
+             drive_second_system)
+
+    param_str = make_params_string(params_args)
 
     json_file_name = "json_spec_" + param_str + ".json"
 
