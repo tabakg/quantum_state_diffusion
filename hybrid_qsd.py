@@ -85,7 +85,7 @@ def get_parser():
                              "rate to generate the Markov model. It is also "
                              "adjusted by the number of trajectories in training.",
                         type=int,
-                        default=1000)
+                        default=None)
 
     # Number of trajectories
     parser.add_argument("--ntraj",
@@ -543,15 +543,25 @@ if __name__ == "__main__":
 
     markov_file = params['markov_file'] =args.markov_file ## input file full path
     diffusion_file = params['diffusion_file'] = args.diffusion_file ## input file full path
+
+    pkl_file = open(diffusion_file, 'rb')
+    data1 = pickle.load(pkl_file)
+    traj_list = data1['traj_list']
+
     output_file_path = args.output_file_path
+    downsample = params['downsample'] = args.downsample
     slow_down = params['slow_down'] = args.slow_down
+
+    if slow_down is None:
+        slow_down = params['slow_down'] = downsample
+    slow_down *= len(traj_list) ## scale down by number of trajectories used
+
     ntraj = params['ntraj'] = args.ntraj
     seed = params['seed'] =  args.seed
     duration = params['duration'] = args.duration
     delta_t = params['delta_t'] = args.deltat
     Nfock_a = params['Nfock_a'] = args.nfocka
     Nfock_j = params['Nfock_j'] = args.nfockj
-    downsample = params['downsample'] = args.downsample
     Regime = params['Regime'] = args.regime
     drive_second_system = params['drive_second_system'] = args.drive_second_system
 
@@ -563,15 +573,8 @@ if __name__ == "__main__":
 
     mod = markov_model.markov_model_builder()
     mod.load(markov_file)
-    reduced_traj_len = math.ceil(duration/(delta_t*slow_down)) + 1
+    reduced_traj_len = math.ceil(duration/(delta_t*slow_down)) + 1 ## should be more than or equal to number of steps in simulation divided by slow_down
     obs = mod.generate_obs_traj(steps=reduced_traj_len, random_state=seed, slow_down=slow_down)
-    pkl_file = open(diffusion_file, 'rb')
-    data1 = pickle.load(pkl_file)
-    traj_list = data1['traj_list']
-
-    if slow_down is None:
-        slow_down = params['slow_down'] = downsample
-    slow_down *= len(traj_list) ## scale down by number of trajectories used
 
     traj_name = traj_list[0].split('/')[-1]
     try:

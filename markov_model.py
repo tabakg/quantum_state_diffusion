@@ -125,6 +125,10 @@ def run_markov_chain(start_cluster, T, steps = 10000, slow_down=1):
     for row, row_sum in enumerate(row_sums):
         if row_sum == 0.: ## We can't divide by zero
             T_cum[row] = 1./T_cum.shape[1]
+            if start_cluster == row:
+                raise ValueError("start_cluster has not sample points, so an "
+                "estimate cannot be made. Make sure to select a start_cluster "
+                "that has points in it.")
         else:
             T_cum[row] /= row_sum
 
@@ -215,22 +219,25 @@ def get_cov_in_clusters(obs_indices, clusters, obs_sample_points):
 def get_obs_generated(obs_indices,
                       T_matrix, ## Transition matrix used
                       expect_in_clusters,
+                      start_cluster, ## index of starting cluster.
                       cov_each_cluster = None,
                       num_steps = 10000,
                       n_clusters = 10,
-                      start_cluster = 0, ## index of starting cluster
                       slow_down=1,
                       return_state_indices_only = False,
                       return_expectations_only = False):
+
+    ## First find the clusters at each step using the run_markov_chain function
     steps = run_markov_chain(start_cluster, T_matrix, steps = num_steps, slow_down = slow_down)
     if return_state_indices_only:
         return steps
+
+    ## when return_state_indices_only is False, we prepare first the expectation values at each cluster
     obs_generated = np.asarray([[expect_in_clusters[l][cluster] for cluster in steps ] for l in obs_indices])
     if return_expectations_only:
         return obs_generated
 
     ## get errors of expectation values from covariance matrices
-
     if cov_each_cluster is None:
         raise ValueError("get_obs_generated requires cov_each_cluster if not returning only indices or expectations.")
 
@@ -242,10 +249,10 @@ def get_obs_generated(obs_indices,
         cov = cov_each_cluster[k]
         cov_each_cluster_in_traj[k] = np.random.multivariate_normal(mean, cov, v)
 
-    indices_each_cluster = {k : 0 for k in counts}
+    indices_each_cluster = {k : 0 for k in counts} ## keeps track of how many entries we used from each cluster
     error_for_steps = np.zeros((len(obs_indices), num_steps*slow_down), dtype=complex)
 
-    for i in range(len(error_for_steps)):
+    for i in range(error_for_steps.shape[1]):
         current_cluster_index = steps[i]
         error_for_steps[:,i] = cov_each_cluster_in_traj[current_cluster_index][indices_each_cluster[current_cluster_index]]
         indices_each_cluster[current_cluster_index] += 1
@@ -474,7 +481,8 @@ class markov_model_builder:
                                                                 verbose = True,
                                                                 Ntraj = self.Ntraj)
             self.clusters = get_clusters(self.labels,self.n_clusters)
-            self.T = self.hmm_model.transmat_
+            # self.T = self.hmm_model.transmat_
+            self.T = make_markov_model(self.labels,self.n_clusters)
             self.status = 'model built'
         elif self.method == 'agg_clustering':
             self.labels = get_cluster_labels(self.X_to_use, self.n_clusters)
@@ -522,7 +530,7 @@ class markov_model_builder:
     def generate_obs_traj(self,
                           steps=10000,
                           random_state=1,
-                          start_cluster=0,
+                          start_cluster=None,
                           slow_down=1,
                           return_state_indices_only=False,
                           return_expectations_only=False,
@@ -531,13 +539,24 @@ class markov_model_builder:
         if obs_indices is None:
             obs_indices = self.obs_indices
         np.random.seed(random_state)
+
+        ## not provided, uses starting index in first train trajectory
+        if start_cluster is None:
+            for i, cluster in enumerate(self.clusters):
+                if len(cluster) > 0 and cluster[0] == 0:
+                    start_cluster = i
+
+        ## if it's still None, then we haven't found the initial state. Something went wrong...
+        if start_cluster is None:
+            raise ValueError("start_cluster not provided, and starting cluster not found.")
+
         return get_obs_generated(obs_indices,
                                 self.T, ## Transition matrix used
                                 self.expects_in_clusters,
+                                start_cluster = start_cluster, ## index of starting cluster
                                 cov_each_cluster=self.cov_each_cluster,
                                 num_steps = steps,
                                 n_clusters = self.n_clusters,
-                                start_cluster = start_cluster, ## index of starting cluster
                                 slow_down=slow_down,
                                 return_state_indices_only = return_state_indices_only,
                                 return_expectations_only = return_expectations_only)
